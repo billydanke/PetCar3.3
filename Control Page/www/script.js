@@ -12,15 +12,20 @@ const tiltVal = document.getElementById("tiltVal");
 const batteryBar = document.getElementById("batteryBar");
 const batteryText = document.getElementById("batteryText");
 const battPacket = document.getElementById("battPacket");
+const lastSentPacket = document.getElementById("lastSentPacket");
+const lastRecvPacket = document.getElementById("lastRecvPacket");
 const servoPacket = document.getElementById("servoPacket");
+const servoQuery = document.getElementById("servoQuery");
 const nightvisionState = document.getElementById("nightvisionState");
 const nightvisionOn = document.getElementById("nightvisionOn");
 const nightvisionOff = document.getElementById("nightvisionOff");
 const nightvisionQuery = document.getElementById("nightvisionQuery");
+const packetLog = document.getElementById("packetLog");
 
 let ws = null;
 let current = { x: 0, y: 0, r: 0 };
 let intent = { x: 0, y: 0, r: 0 };
+let servoState = { x: 0, y: 0 };
 let speedScale = Number(speedRange.value) / 100;
 let sendTimer = null;
 let batteryTimer = null;
@@ -70,9 +75,22 @@ function handleClose() {
   setConnected(false);
 }
 
+function appendPacketLog(direction, message) {
+  const row = document.createElement("div");
+  row.className = `packet-row ${direction}`;
+  row.textContent = `${new Date().toLocaleTimeString()} ${direction.toUpperCase()} ${message}`;
+  packetLog.prepend(row);
+
+  while (packetLog.children.length > 40) {
+    packetLog.removeChild(packetLog.lastChild);
+  }
+}
+
 function send(command) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(command);
+  lastSentPacket.textContent = command;
+  appendPacketLog("tx", command);
 }
 
 function updateCurrentFromIntent() {
@@ -161,29 +179,18 @@ function handleBattery(percent) {
 
 function handleMessage(evt) {
   const message = evt.data.trim();
-  battPacket.textContent = message;
+  lastRecvPacket.textContent = message;
+  appendPacketLog("rx", message);
 
   if (message.startsWith("b ")) {
+    battPacket.textContent = message;
     const parts = message.split(/\s+/);
     if (parts.length >= 2) handleBattery(parts[1]);
     return;
   }
 
   if (message.startsWith("s ")) {
-    servoPacket.textContent = message;
-    const parts = message.split(/\s+/);
-    for (let i = 1; i < parts.length - 1; i += 2) {
-      const axis = parts[i];
-      const value = Number(parts[i + 1]);
-      if (axis === "x" && !Number.isNaN(value)) {
-        panRange.value = String(value);
-        panVal.textContent = `${value} deg`;
-      }
-      if (axis === "y" && !Number.isNaN(value)) {
-        tiltRange.value = String(value);
-        tiltVal.textContent = `${value} deg`;
-      }
-    }
+    updateServoStateFromMessage(message);
     return;
   }
 
@@ -193,7 +200,36 @@ function handleMessage(evt) {
   }
 }
 
+function updateServoUi() {
+  panRange.value = String(servoState.x);
+  tiltRange.value = String(servoState.y);
+  panVal.textContent = `${servoState.x} deg`;
+  tiltVal.textContent = `${servoState.y} deg`;
+  servoPacket.textContent = `s x ${servoState.x} y ${servoState.y}`;
+}
+
+function updateServoState(axis, value) {
+  if (axis !== "x" && axis !== "y") return;
+
+  const clamped = clamp(Math.round(Number(value) || 0), -90, 90);
+  servoState[axis] = clamped;
+  updateServoUi();
+}
+
+function updateServoStateFromMessage(message) {
+  const parts = message.split(/\s+/);
+  for (let i = 1; i < parts.length - 1; i += 2) {
+    const axis = parts[i];
+    const value = Number(parts[i + 1]);
+    if ((axis === "x" || axis === "y") && !Number.isNaN(value)) {
+      servoState[axis] = clamp(Math.round(value), -90, 90);
+    }
+  }
+  updateServoUi();
+}
+
 function sendServo(axis, value) {
+  updateServoState(axis, value);
   send(`s ${axis} ${value}`);
 }
 
@@ -286,6 +322,7 @@ nightvisionOff.addEventListener("click", () => {
   nightvisionState.textContent = "off";
 });
 nightvisionQuery.addEventListener("click", () => send("n query"));
+servoQuery.addEventListener("click", () => send("s query"));
 
 speedRange.addEventListener("input", () => {
   speedScale = Number(speedRange.value) / 100;
@@ -320,4 +357,4 @@ window.addEventListener("keyup", (e) => {
 });
 
 updateCurrentFromIntent();
-sendPanTilt();
+updateServoUi();

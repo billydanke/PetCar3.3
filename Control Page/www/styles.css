@@ -113,13 +113,13 @@ video {
   width: 140px;
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  padding: 4px;
+  border-radius: 15px;
+  padding: 5px;
 }
 
 .battery-bar {
-  height: 16px;
-  border-radius: 999px;
+  height: 20px;
+  border-radius: 10px;
   background: linear-gradient(90deg, var(--ok), #84cc16);
   width: 0%;
   transition: width 0.25s ease;
@@ -127,7 +127,7 @@ video {
 
 .battery-text {
   margin-top: 4px;
-  text-align: right;
+  text-align: center;
   font-size: 0.8rem;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -252,6 +252,32 @@ input[type="range"] {
   display: grid;
   gap: 4px;
   font-size: 0.9rem;
+}
+
+.packet-log {
+  min-height: 120px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 12px 14px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.packet-row {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.packet-row.tx {
+  border-left: 3px solid var(--accent-2);
+}
+
+.packet-row.rx {
+  border-left: 3px solid var(--accent);
 }
 
 code {

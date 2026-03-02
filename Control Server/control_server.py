@@ -70,31 +70,28 @@ class ControlServer:
             return
 
         self.logger.info("RX %s", message)
-        await self._handle_legacy_message(websocket, message)
-
-    async def _handle_legacy_message(self, websocket: ServerConnection, message: str) -> None:
         parts = message.split()
         command = parts[0].lower()
 
         if command == "s":
-            await self._handle_legacy_servo(websocket, parts)
+            await self._handle_servo(websocket, parts)
             return
         if command == "m":
-            await self._handle_legacy_motor(websocket, parts)
+            await self._handle_motor(websocket, parts)
             return
         if command == "n":
-            await self._handle_legacy_nightvision(websocket, parts)
+            await self._handle_nightvision(websocket, parts)
             return
         if command == "b":
-            await self._handle_legacy_battery(websocket, parts)
+            await self._handle_battery(websocket, parts)
             return
 
         await websocket.send(f"error unknown-command {command}")
         self.logger.warning("Unsupported command: %s", message)
 
-    async def _handle_legacy_servo(self, websocket: ServerConnection, parts: list[str]) -> None:
+    async def _handle_servo(self, websocket: ServerConnection, parts: list[str]) -> None:
         if len(parts) == 2 and parts[1].lower() == "query":
-            await websocket.send(self._legacy_servo_query_response())
+            await websocket.send(self._servo_query_response())
             return
 
         if len(parts) != 3:
@@ -109,7 +106,7 @@ class ControlServer:
         angle = self._clamp_servo(self._safe_float(parts[2], 0.0))
         self._set_servo(axis, angle, source="legacy")
 
-    async def _handle_legacy_motor(self, websocket: ServerConnection, parts: list[str]) -> None:
+    async def _handle_motor(self, websocket: ServerConnection, parts: list[str]) -> None:
         if len(parts) < 5:
             await websocket.send("error invalid-motor-command")
             return
@@ -125,7 +122,7 @@ class ControlServer:
         rotation = self._clamp_percent(values.get("r", values.get("rot", 0.0)))
         self._set_drive(vx, vy, rotation, source="legacy")
 
-    async def _handle_legacy_nightvision(self, websocket: ServerConnection, parts: list[str]) -> None:
+    async def _handle_nightvision(self, websocket: ServerConnection, parts: list[str]) -> None:
         if len(parts) != 2:
             await websocket.send("error invalid-nightvision-command")
             return
@@ -144,7 +141,7 @@ class ControlServer:
 
         await websocket.send("error invalid-nightvision-command")
 
-    async def _handle_legacy_battery(self, websocket: ServerConnection, parts: list[str]) -> None:
+    async def _handle_battery(self, websocket: ServerConnection, parts: list[str]) -> None:
         if len(parts) != 2 or parts[1].lower() != "query":
             await websocket.send("error invalid-battery-command")
             return
@@ -202,7 +199,7 @@ class ControlServer:
         self.logger.info("Battery query would return %d%%", self.state.battery_percent)
         return self.state.battery_percent
 
-    def _legacy_servo_query_response(self) -> str:
+    def _servo_query_response(self) -> str:
         return f"s x {self.state.servo_x:.1f} y {self.state.servo_y:.1f}"
 
     @staticmethod
