@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robot Control Console</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+
+    <section class="panel">
+
+      <div class="panel-head">
+        <h2>Camera Feed</h2>
+        <div class="status">
+          <span id="wsDot" class="dot" aria-hidden="true"></span>
+          <span id="wsState">Disconnected</span>
+        </div>
+      </div>
+
+      <div class="video-wrap">
+        <iframe id="cameraFrame" title="Robot camera" src="http://192.168.0.215:8889/cam"></iframe>
+        <div class="camera-overlay">
+          <div class="battery">
+            <div id="batteryBar" class="battery-bar"></div>
+            <div id="batteryText" class="battery-text">Battery --%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="row">
+          <input id="wsUrl" type="text" value="ws://192.168.0.215:8889/ws" />
+          <button id="connectBtn" class="btn">Connect</button>
+        </div>
+      </div>
+      
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Camera Pan/Tilt</h2>
+      </div>
+      <div class="range-wrap">
+        <label for="panRange"><span>Pan</span><span id="panVal">90 deg</span></label>
+        <input id="panRange" type="range" min="0" max="180" value="90" />
+      </div>
+      <div class="range-wrap">
+        <label for="tiltRange"><span>Tilt</span><span id="tiltVal">90 deg</span></label>
+        <input id="tiltRange" type="range" min="0" max="180" value="90" />
+      </div>
+      <div class="telemetry">
+        <div>Drive: <code id="driveOut">vx=0.00 vy=0.00 w=0.00</code></div>
+        <div>Last battery packet: <code id="battPacket">none</code></div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Mecanum Translation</h2>
+        </div>
+        <div class="pad-grid">
+          <button class="ctrl" data-vx="-1" data-vy="1" data-omega="0">NW</button>
+          <button class="ctrl" data-vx="0" data-vy="1" data-omega="0">N</button>
+          <button class="ctrl" data-vx="1" data-vy="1" data-omega="0">NE</button>
+          <button class="ctrl" data-vx="-1" data-vy="0" data-omega="0">W</button>
+          <button id="stopBtn" class="ctrl">STOP</button>
+          <button class="ctrl" data-vx="1" data-vy="0" data-omega="0">E</button>
+          <button class="ctrl" data-vx="-1" data-vy="-1" data-omega="0">SW</button>
+          <button class="ctrl" data-vx="0" data-vy="-1" data-omega="0">S</button>
+          <button class="ctrl" data-vx="1" data-vy="-1" data-omega="0">SE</button>
+        </div>
+        <div class="hint">Hold a direction to move. Keyboard: W/A/S/D or arrows for translation.</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Rotation</h2>
+        </div>
+        <div class="rotate-row">
+          <button id="rotLeft" class="ctrl">CCW</button>
+          <button id="rotStop" class="ctrl">Stop</button>
+          <button id="rotRight" class="ctrl">CW</button>
+        </div>
+        <div class="range-wrap">
+          <label for="speedRange"><span>Speed Scale</span><span id="speedVal">60%</span></label>
+          <input id="speedRange" type="range" min="10" max="100" value="60" />
+        </div>
+        <div class="hint">Q/E rotate left/right. Space to stop all motion.</div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
