@@ -163,6 +163,11 @@ button.ctrl {
   height: 60px;
 }
 
+button.ctrl.small {
+  height: 46px;
+  font-size: 0.95rem;
+}
+
 button.ctrl:active,
 button.ctrl.active {
   transform: translateY(1px) scale(0.98);
@@ -174,6 +179,13 @@ button.ctrl.active {
   display: grid;
   grid-template-columns: 1fr 90px 1fr;
   align-items: center;
+  gap: 10px;
+  margin: 8px 14px 14px;
+}
+
+.nightvision-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin: 8px 14px 14px;
 }

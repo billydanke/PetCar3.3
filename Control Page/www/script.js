@@ -12,12 +12,18 @@ const tiltVal = document.getElementById("tiltVal");
 const batteryBar = document.getElementById("batteryBar");
 const batteryText = document.getElementById("batteryText");
 const battPacket = document.getElementById("battPacket");
+const servoPacket = document.getElementById("servoPacket");
+const nightvisionState = document.getElementById("nightvisionState");
+const nightvisionOn = document.getElementById("nightvisionOn");
+const nightvisionOff = document.getElementById("nightvisionOff");
+const nightvisionQuery = document.getElementById("nightvisionQuery");
 
 let ws = null;
-let current = { vx: 0, vy: 0, omega: 0 };
-let intent = { vx: 0, vy: 0, omega: 0 };
+let current = { x: 0, y: 0, r: 0 };
+let intent = { x: 0, y: 0, r: 0 };
 let speedScale = Number(speedRange.value) / 100;
 let sendTimer = null;
+let batteryTimer = null;
 let activeButton = null;
 const keys = new Set();
 
@@ -32,6 +38,10 @@ function setConnected(connected) {
   wsDot.classList.toggle("connected", connected);
   wsState.textContent = connected ? "Connected" : "Disconnected";
   connectBtn.textContent = connected ? "Disconnect" : "Connect";
+
+  if (!connected) {
+    stopBatteryPolling();
+  }
 }
 
 function connectWebSocket() {
@@ -42,40 +52,50 @@ function connectWebSocket() {
 
   const url = wsUrlInput.value.trim();
   ws = new WebSocket(url);
-  ws.addEventListener("open", () => setConnected(true));
-  ws.addEventListener("close", () => setConnected(false));
-  ws.addEventListener("error", () => setConnected(false));
+  ws.addEventListener("open", handleOpen);
+  ws.addEventListener("close", handleClose);
+  ws.addEventListener("error", handleClose);
   ws.addEventListener("message", handleMessage);
 }
 
-function send(data) {
+function handleOpen() {
+  setConnected(true);
+  send("s query");
+  send("n query");
+  send("b query");
+  startBatteryPolling();
+}
+
+function handleClose() {
+  setConnected(false);
+}
+
+function send(command) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify(data));
+  ws.send(command);
 }
 
 function updateCurrentFromIntent() {
-  current.vx = intent.vx * speedScale;
-  current.vy = intent.vy * speedScale;
-  current.omega = intent.omega * speedScale;
-  driveOut.textContent =
-    `vx=${current.vx.toFixed(2)} vy=${current.vy.toFixed(2)} w=${current.omega.toFixed(2)}`;
+  current.x = Math.round(intent.x * speedScale * 100);
+  current.y = Math.round(intent.y * speedScale * 100);
+  current.r = Math.round(intent.r * speedScale * 100);
+  driveOut.textContent = formatDriveCommand();
 }
 
-function applyDrive(vx, vy, omega) {
-  const [nx, ny] = normalize(vx, vy);
-  intent.vx = clamp(nx, -1, 1);
-  intent.vy = clamp(ny, -1, 1);
-  intent.omega = clamp(omega, -1, 1);
+function applyDrive(x, y, rotation) {
+  const [nx, ny] = normalize(x, y);
+  intent.x = clamp(nx, -1, 1);
+  intent.y = clamp(ny, -1, 1);
+  intent.r = clamp(rotation, -1, 1);
   updateCurrentFromIntent();
 }
 
+function formatDriveCommand() {
+  return `m x ${current.x} y ${current.y} r ${current.r}`;
+}
+
 function sendDrive() {
-  send({
-    type: "drive",
-    vx: Number(current.vx.toFixed(3)),
-    vy: Number(current.vy.toFixed(3)),
-    omega: Number(current.omega.toFixed(3))
-  });
+  send(formatDriveCommand());
 }
 
 function stopDrive() {
@@ -92,6 +112,17 @@ function endContinuousSend() {
   if (!sendTimer) return;
   clearInterval(sendTimer);
   sendTimer = null;
+}
+
+function startBatteryPolling() {
+  if (batteryTimer) return;
+  batteryTimer = setInterval(() => send("b query"), 3000);
+}
+
+function stopBatteryPolling() {
+  if (!batteryTimer) return;
+  clearInterval(batteryTimer);
+  batteryTimer = null;
 }
 
 function bindHold(button, onPress, onRelease) {
@@ -129,21 +160,41 @@ function handleBattery(percent) {
 }
 
 function handleMessage(evt) {
-  battPacket.textContent = evt.data;
+  const message = evt.data.trim();
+  battPacket.textContent = message;
 
-  try {
-    const msg = JSON.parse(evt.data);
-    if (typeof msg.battery === "number") {
-      handleBattery(msg.battery);
-    } else if (msg.type === "battery" && typeof msg.percent === "number") {
-      handleBattery(msg.percent);
-    } else if (msg.type === "status" && typeof msg.batteryPercent === "number") {
-      handleBattery(msg.batteryPercent);
-    }
-  } catch {
-    const numeric = Number(evt.data);
-    if (!Number.isNaN(numeric)) handleBattery(numeric);
+  if (message.startsWith("b ")) {
+    const parts = message.split(/\s+/);
+    if (parts.length >= 2) handleBattery(parts[1]);
+    return;
   }
+
+  if (message.startsWith("s ")) {
+    servoPacket.textContent = message;
+    const parts = message.split(/\s+/);
+    for (let i = 1; i < parts.length - 1; i += 2) {
+      const axis = parts[i];
+      const value = Number(parts[i + 1]);
+      if (axis === "x" && !Number.isNaN(value)) {
+        panRange.value = String(value);
+        panVal.textContent = `${value} deg`;
+      }
+      if (axis === "y" && !Number.isNaN(value)) {
+        tiltRange.value = String(value);
+        tiltVal.textContent = `${value} deg`;
+      }
+    }
+    return;
+  }
+
+  if (message === "n on" || message === "n off") {
+    nightvisionState.textContent = message === "n on" ? "on" : "off";
+    return;
+  }
+}
+
+function sendServo(axis, value) {
+  send(`s ${axis} ${value}`);
 }
 
 function sendPanTilt() {
@@ -151,7 +202,30 @@ function sendPanTilt() {
   const tilt = Number(tiltRange.value);
   panVal.textContent = `${pan} deg`;
   tiltVal.textContent = `${tilt} deg`;
-  send({ type: "camera", pan, tilt });
+  sendServo("x", pan);
+  sendServo("y", tilt);
+}
+
+function updateDriveFromKeys() {
+  let x = 0;
+  let y = 0;
+  let rotation = 0;
+
+  if (keys.has("w") || keys.has("arrowup")) y += 1;
+  if (keys.has("s") || keys.has("arrowdown")) y -= 1;
+  if (keys.has("a") || keys.has("arrowleft")) x -= 1;
+  if (keys.has("d") || keys.has("arrowright")) x += 1;
+  if (keys.has("q")) rotation -= 1;
+  if (keys.has("e")) rotation += 1;
+
+  applyDrive(x, y, rotation);
+  sendDrive();
+
+  if (x !== 0 || y !== 0 || rotation !== 0) {
+    beginContinuousSend();
+  } else {
+    endContinuousSend();
+  }
 }
 
 document.querySelectorAll("button.ctrl[data-vx]").forEach((btn) => {
@@ -203,6 +277,15 @@ bindHold(
 rotStop.addEventListener("click", stopDrive);
 stopBtn.addEventListener("click", stopDrive);
 connectBtn.addEventListener("click", connectWebSocket);
+nightvisionOn.addEventListener("click", () => {
+  send("n on");
+  nightvisionState.textContent = "on";
+});
+nightvisionOff.addEventListener("click", () => {
+  send("n off");
+  nightvisionState.textContent = "off";
+});
+nightvisionQuery.addEventListener("click", () => send("n query"));
 
 speedRange.addEventListener("input", () => {
   speedScale = Number(speedRange.value) / 100;
@@ -228,33 +311,13 @@ window.addEventListener("keydown", (e) => {
     return;
   }
 
-  let x = 0;
-  let y = 0;
-  let omega = 0;
-  if (keys.has("w") || keys.has("arrowup")) y += 1;
-  if (keys.has("s") || keys.has("arrowdown")) y -= 1;
-  if (keys.has("a") || keys.has("arrowleft")) x -= 1;
-  if (keys.has("d") || keys.has("arrowright")) x += 1;
-  if (keys.has("q")) omega -= 1;
-  if (keys.has("e")) omega += 1;
-  applyDrive(x, y, omega);
-  sendDrive();
-  if (x !== 0 || y !== 0 || omega !== 0) beginContinuousSend();
+  updateDriveFromKeys();
 });
 
 window.addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase());
-
-  let x = 0;
-  let y = 0;
-  let omega = 0;
-  if (keys.has("w") || keys.has("arrowup")) y += 1;
-  if (keys.has("s") || keys.has("arrowdown")) y -= 1;
-  if (keys.has("a") || keys.has("arrowleft")) x -= 1;
-  if (keys.has("d") || keys.has("arrowright")) x += 1;
-  if (keys.has("q")) omega -= 1;
-  if (keys.has("e")) omega += 1;
-  applyDrive(x, y, omega);
-  sendDrive();
-  if (x === 0 && y === 0 && omega === 0) endContinuousSend();
+  updateDriveFromKeys();
 });
+
+updateCurrentFromIntent();
+sendPanTilt();
