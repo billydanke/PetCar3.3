@@ -34,5 +34,4 @@ class BatteryController:
 
     def sample_battery_percent(self) -> int:
         self.state.battery_percent = random.randint(self.min_percent, self.max_percent)
-        self.logger.info("Battery query would return %d%%", self.state.battery_percent)
         return self.state.battery_percent

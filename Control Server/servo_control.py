@@ -1,14 +1,25 @@
-"""Servo control module for PetCar3.3.
-
-This module is intentionally logging-only for now.
-"""
+"""Servo control module for PetCar3.3."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from websockets.asyncio.server import ServerConnection
+
+try:
+    from adafruit_servokit import ServoKit
+except (ImportError, NotImplementedError):  # pragma: no cover - expected on non-hardware dev machines
+    ServoKit = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:
+    from adafruit_servokit import ServoKit as ServoKitType
+
+
+HORIZONTAL_CHANNEL = 0
+VERTICAL_CHANNEL = 1
+SERVO_KIT_CHANNELS = 16
 
 
 @dataclass(slots=True)
@@ -23,6 +34,30 @@ class ServoController:
         self.servo_min_deg = servo_min_deg
         self.servo_max_deg = servo_max_deg
         self.state = ServoState()
+        self.kit: ServoKitType | None = None
+
+        if ServoKit is None:
+            self.logger.warning(
+                "adafruit_servokit is not installed; servo commands will be simulated."
+            )
+            return
+
+        try:
+            self.kit = ServoKit(channels=SERVO_KIT_CHANNELS)
+        except NotImplementedError:
+            self.kit = None
+            self.logger.warning(
+                "ServoKit platform unsupported on this machine; servo commands will be simulated."
+            )
+            return
+
+        self._write_axis("x", self.state.servo_x)
+        self._write_axis("y", self.state.servo_y)
+        self.logger.info(
+            "ServoKit initialized (x channel=%d, y channel=%d)",
+            HORIZONTAL_CHANNEL,
+            VERTICAL_CHANNEL,
+        )
 
     async def handle_command(self, websocket: ServerConnection, parts: list[str]) -> None:
         if len(parts) == 2 and parts[1].lower() == "query":
@@ -50,8 +85,9 @@ class ServoController:
             self.logger.warning("Ignoring invalid servo axis from %s: %s", source, axis)
             return
 
+        self._write_axis(axis, angle)
         self.logger.info(
-            "Servo would move: axis=%s angle=%.1f deg source=%s",
+            "Servo move: axis=%s angle=%.1f deg source=%s",
             axis,
             angle,
             source,
@@ -69,3 +105,16 @@ class ServoController:
 
     def _clamp_servo(self, angle: float) -> float:
         return max(self.servo_min_deg, min(self.servo_max_deg, angle))
+
+    def _write_axis(self, axis: str, logical_angle: float) -> None:
+        if self.kit is None:
+            return
+
+        physical_angle = self._logical_to_physical(logical_angle)
+        channel = HORIZONTAL_CHANNEL if axis == "x" else VERTICAL_CHANNEL
+        self.kit.servo[channel].angle = physical_angle
+
+    def _logical_to_physical(self, logical_angle: float) -> float:
+        clamped = self._clamp_servo(logical_angle)
+        # Control protocol uses centered angles (e.g. -90..90). ServoKit expects 0..180.
+        return max(0.0, min(180.0, 90.0 + clamped))
