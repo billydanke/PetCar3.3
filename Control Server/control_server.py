@@ -30,7 +30,7 @@ from servo_control import ServoController
 @dataclass(slots=True)
 class ServerConfig:
     host: str = "0.0.0.0"
-    port: int = 80
+    port: int = 8080
     servo_min_deg: int = -90
     servo_max_deg: int = 90
     battery_min_percent: int = 0
@@ -99,7 +99,7 @@ class ControlServer:
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="PetCar3.3 websocket control server")
     parser.add_argument("--host", default="0.0.0.0", help="Bind address")
-    parser.add_argument("--port", type=int, default=80, help="Bind port")
+    parser.add_argument("--port", type=int, default=8080, help="Bind port")
     parser.add_argument("--servo-min", type=int, default=-90, help="Servo minimum angle")
     parser.add_argument("--servo-max", type=int, default=90, help="Servo maximum angle")
     parser.add_argument(
