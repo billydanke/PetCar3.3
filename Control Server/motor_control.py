@@ -37,18 +37,17 @@ class MotorController:
         vx = self._clamp_percent(values.get("x", 0.0))
         vy = self._clamp_percent(values.get("y", 0.0))
         rotation = self._clamp_percent(values.get("r", values.get("rot", 0.0)))
-        self.set_drive(vx, vy, rotation, source="legacy")
+        self.set_drive(vx, vy, rotation)
 
-    def set_drive(self, vx: float, vy: float, rotation: float, source: str) -> None:
+    def set_drive(self, vx: float, vy: float, rotation: float) -> None:
         self.state.drive_vx_percent = vx
         self.state.drive_vy_percent = vy
         self.state.drive_rotation_percent = rotation
         self.logger.info(
-            "Drive would move: translate_x=%.1f%% translate_y=%.1f%% rotate=%.1f%% source=%s",
+            "Drive would move: translate_x=%.1f%% translate_y=%.1f%% rotate=%.1f%%",
             vx,
             vy,
-            rotation,
-            source,
+            rotation
         )
 
     def hard_stop(self, reason: str) -> None:

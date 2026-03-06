@@ -23,7 +23,8 @@ from websockets.asyncio.server import ServerConnection, serve
 
 from battery_control import BatteryController
 from motor_control import MotorController
-from servo_nightvision_control import ServoNightvisionController
+from nightvision_control import NightvisionController
+from servo_control import ServoController
 
 
 @dataclass(slots=True)
@@ -42,7 +43,12 @@ class ControlServer:
         self.logger = logging.getLogger("petcar.control_server")
 
         self.motorHandler = MotorController(self.logger)
-        self.cameraHandler = ServoNightvisionController(logger=self.logger, servo_min_deg=self.config.servo_min_deg, servo_max_deg=self.config.servo_max_deg)
+        self.servoHandler = ServoController(
+            logger=self.logger,
+            servo_min_deg=self.config.servo_min_deg,
+            servo_max_deg=self.config.servo_max_deg,
+        )
+        self.nightvisionHandler = NightvisionController(logger=self.logger)
         self.batteryHandler = BatteryController(logger=self.logger, min_percent=self.config.battery_min_percent, max_percent=self.config.battery_max_percent)
 
     async def handler(self, websocket: ServerConnection) -> None:
@@ -72,10 +78,10 @@ class ControlServer:
             await self.motorHandler.handle_command(websocket, parts)
             return
         if command == "s":
-            await self.cameraHandler.handle_servo_command(websocket, parts)
+            await self.servoHandler.handle_command(websocket, parts)
             return
         if command == "n":
-            await self.cameraHandler.handle_nightvision_command(websocket, parts)
+            await self.nightvisionHandler.handle_command(websocket, parts)
             return
         if command == "b":
             await self.batteryHandler.handle_command(websocket, parts)
