@@ -17,10 +17,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-import random
 from dataclasses import dataclass
 
 from websockets.asyncio.server import ServerConnection, serve
+
+from battery_control import BatteryController
+from motor_control import MotorController
+from servo_nightvision_control import ServoNightvisionController
 
 
 @dataclass(slots=True)
@@ -33,22 +36,14 @@ class ServerConfig:
     battery_max_percent: int = 100
 
 
-@dataclass(slots=True)
-class RobotState:
-    servo_x: float = 0.0
-    servo_y: float = 0.0
-    nightvision_on: bool = False
-    battery_percent: int = 100
-    drive_vx_percent: float = 0.0
-    drive_vy_percent: float = 0.0
-    drive_rotation_percent: float = 0.0
-
-
 class ControlServer:
     def __init__(self, config: ServerConfig) -> None:
         self.config = config
-        self.state = RobotState()
         self.logger = logging.getLogger("petcar.control_server")
+
+        self.motorHandler = MotorController(self.logger)
+        self.cameraHandler = ServoNightvisionController(logger=self.logger, servo_min_deg=self.config.servo_min_deg, servo_max_deg=self.config.servo_max_deg)
+        self.batteryHandler = BatteryController(logger=self.logger, min_percent=self.config.battery_min_percent, max_percent=self.config.battery_max_percent)
 
     async def handler(self, websocket: ServerConnection) -> None:
         client = self._client_name(websocket)
@@ -61,7 +56,7 @@ class ControlServer:
             self.logger.exception("Connection error from %s", client)
             raise
         finally:
-            self._hard_stop_motors(f"websocket disconnected: {client}")
+            self.motorHandler.hard_stop(f"websocket disconnected: {client}")
             self.logger.info("Client disconnected: %s", client)
 
     async def _handle_message(self, websocket: ServerConnection, raw_message: str) -> None:
@@ -69,167 +64,25 @@ class ControlServer:
         if not message:
             return
 
-        self.logger.info("RX %s", message)
+        self.logger.info("Received '%s'", message)
         parts = message.split()
         command = parts[0].lower()
 
-        if command == "s":
-            await self._handle_servo(websocket, parts)
-            return
         if command == "m":
-            await self._handle_motor(websocket, parts)
+            await self.motorHandler.handle_command(websocket, parts)
+            return
+        if command == "s":
+            await self.cameraHandler.handle_servo_command(websocket, parts)
             return
         if command == "n":
-            await self._handle_nightvision(websocket, parts)
+            await self.cameraHandler.handle_nightvision_command(websocket, parts)
             return
         if command == "b":
-            await self._handle_battery(websocket, parts)
+            await self.batteryHandler.handle_command(websocket, parts)
             return
 
         await websocket.send(f"error unknown-command {command}")
         self.logger.warning("Unsupported command: %s", message)
-
-    async def _handle_servo(self, websocket: ServerConnection, parts: list[str]) -> None:
-        if len(parts) == 2 and parts[1].lower() == "query":
-            await websocket.send(self._servo_query_response())
-            return
-
-        if len(parts) != 3:
-            await websocket.send("error invalid-servo-command")
-            return
-
-        axis = parts[1].lower()
-        if axis not in {"x", "y"}:
-            await websocket.send("error invalid-servo-axis")
-            return
-
-        angle = self._clamp_servo(self._safe_float(parts[2], 0.0))
-        self._set_servo(axis, angle, source="legacy")
-
-    async def _handle_motor(self, websocket: ServerConnection, parts: list[str]) -> None:
-        if len(parts) < 5:
-            await websocket.send("error invalid-motor-command")
-            return
-
-        try:
-            values = self._parse_keyed_values(parts[1:])
-        except ValueError as exc:
-            await websocket.send(f"error {exc}")
-            return
-
-        vx = self._clamp_percent(values.get("x", 0.0))
-        vy = self._clamp_percent(values.get("y", 0.0))
-        rotation = self._clamp_percent(values.get("r", values.get("rot", 0.0)))
-        self._set_drive(vx, vy, rotation, source="legacy")
-
-    async def _handle_nightvision(self, websocket: ServerConnection, parts: list[str]) -> None:
-        if len(parts) != 2:
-            await websocket.send("error invalid-nightvision-command")
-            return
-
-        action = parts[1].lower()
-        if action == "query":
-            await websocket.send(f"n {'on' if self.state.nightvision_on else 'off'}")
-            return
-        if action in {"on", "off"}:
-            self.state.nightvision_on = action == "on"
-            self.logger.info(
-                "Nightvision would turn %s",
-                "ON" if self.state.nightvision_on else "OFF",
-            )
-            return
-
-        await websocket.send("error invalid-nightvision-command")
-
-    async def _handle_battery(self, websocket: ServerConnection, parts: list[str]) -> None:
-        if len(parts) != 2 or parts[1].lower() != "query":
-            await websocket.send("error invalid-battery-command")
-            return
-
-        percent = self._sample_battery_percent()
-        await websocket.send(f"b {percent}")
-
-    def _set_servo(self, axis: str, angle: float, source: str) -> None:
-        if axis == "x":
-            self.state.servo_x = angle
-        elif axis == "y":
-            self.state.servo_y = angle
-        else:
-            self.logger.warning("Ignoring invalid servo axis from %s: %s", source, axis)
-            return
-
-        self.logger.info(
-            "Servo would move: axis=%s angle=%.1f deg source=%s",
-            axis,
-            angle,
-            source,
-        )
-
-    def _set_drive(self, vx: float, vy: float, rotation: float, source: str) -> None:
-        self.state.drive_vx_percent = vx
-        self.state.drive_vy_percent = vy
-        self.state.drive_rotation_percent = rotation
-        self.logger.info(
-            "Drive would move: translate_x=%.1f%% translate_y=%.1f%% rotate=%.1f%% source=%s",
-            vx,
-            vy,
-            rotation,
-            source,
-        )
-
-    def _hard_stop_motors(self, reason: str) -> None:
-        if (
-            self.state.drive_vx_percent == 0.0
-            and self.state.drive_vy_percent == 0.0
-            and self.state.drive_rotation_percent == 0.0
-        ):
-            self.logger.info("Motor hard-stop confirmed (%s)", reason)
-            return
-
-        self.state.drive_vx_percent = 0.0
-        self.state.drive_vy_percent = 0.0
-        self.state.drive_rotation_percent = 0.0
-        self.logger.warning("Motor hard-stop: %s", reason)
-
-    def _sample_battery_percent(self) -> int:
-        self.state.battery_percent = random.randint(
-            self.config.battery_min_percent,
-            self.config.battery_max_percent,
-        )
-        self.logger.info("Battery query would return %d%%", self.state.battery_percent)
-        return self.state.battery_percent
-
-    def _servo_query_response(self) -> str:
-        return f"s x {self.state.servo_x:.1f} y {self.state.servo_y:.1f}"
-
-    @staticmethod
-    def _safe_float(value: object, default: float) -> float:
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return default
-
-    @staticmethod
-    def _parse_keyed_values(parts: list[str]) -> dict[str, float]:
-        if len(parts) % 2 != 0:
-            raise ValueError("invalid-keyed-values")
-
-        values: dict[str, float] = {}
-        for index in range(0, len(parts), 2):
-            key = parts[index].lower()
-            try:
-                value = float(parts[index + 1])
-            except ValueError as exc:
-                raise ValueError("invalid-number") from exc
-            values[key] = value
-        return values
-
-    def _clamp_servo(self, angle: float) -> float:
-        return max(self.config.servo_min_deg, min(self.config.servo_max_deg, angle))
-
-    @staticmethod
-    def _clamp_percent(value: float) -> float:
-        return max(-100.0, min(100.0, value))
 
     @staticmethod
     def _client_name(websocket: ServerConnection) -> str:
