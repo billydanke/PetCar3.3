@@ -108,7 +108,7 @@ User=<Your Username>
 Group=<Your Username>
 WorkingDirectory=/opt/petcar33/app
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/petcar33/venv/bin/python /opt/petcar33/app/Control\ Server/control_server.py
+ExecStart=/opt/petcar33/venv/bin/python "/opt/petcar33/app/Control Server/control_server.py"
 Restart=always
 RestartSec=1
 
