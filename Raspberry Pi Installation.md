@@ -74,12 +74,10 @@ pip install --upgrade pip setuptools wheel
 While still inside the virtual environment, run the following to install the necessary python packages for the control server:
 ```sh
 pip install "websockets>=16"
-pip install adafruit-circuitpython-servokit
 ```
 Once installed, you can test to make sure things are working:
 ```sh
 python -c "from websockets.asyncio.server import ServerConnection, serve; print('websockets OK')"
-python -c "from adafruit_servokit import ServoKit; print('ServoKit OK')"
 python -c "import RPi.GPIO as GPIO; print('RPi.GPIO OK')"
 ```
 

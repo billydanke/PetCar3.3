@@ -4,22 +4,19 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from websockets.asyncio.server import ServerConnection
 
 try:
-    from adafruit_servokit import ServoKit
-except (ImportError, NotImplementedError):  # pragma: no cover - expected on non-hardware dev machines
-    ServoKit = None  # type: ignore[assignment]
-
-if TYPE_CHECKING:
-    from adafruit_servokit import ServoKit as ServoKitType
+    import pigpio
+except ImportError:  # pragma: no cover - expected on non-hardware dev machines
+    pigpio = None  # type: ignore[assignment]
 
 
-HORIZONTAL_CHANNEL = 0
-VERTICAL_CHANNEL = 1
-SERVO_KIT_CHANNELS = 16
+HORIZONTAL_GPIO = 12
+VERTICAL_GPIO = 13
+SERVO_MIN_PULSE_US = 1000
+SERVO_MAX_PULSE_US = 2000
 
 
 @dataclass(slots=True)
@@ -34,29 +31,26 @@ class ServoController:
         self.servo_min_deg = servo_min_deg
         self.servo_max_deg = servo_max_deg
         self.state = ServoState()
-        self.kit: ServoKitType | None = None
+        self.pi: pigpio.pi | None = None
 
-        if ServoKit is None:
-            self.logger.warning(
-                "adafruit_servokit is not installed; servo commands will be simulated."
-            )
+        if pigpio is None:
+            self.logger.warning("pigpio is not installed; servo commands will be simulated.")
             return
 
-        try:
-            self.kit = ServoKit(channels=SERVO_KIT_CHANNELS)
-        except NotImplementedError:
-            self.kit = None
+        self.pi = pigpio.pi()
+        if not self.pi.connected:
+            self.pi = None
             self.logger.warning(
-                "ServoKit platform unsupported on this machine; servo commands will be simulated."
+                "Could not connect to pigpio daemon; servo commands will be simulated."
             )
             return
 
         self._write_axis("x", self.state.servo_x)
         self._write_axis("y", self.state.servo_y)
         self.logger.info(
-            "ServoKit initialized (x channel=%d, y channel=%d)",
-            HORIZONTAL_CHANNEL,
-            VERTICAL_CHANNEL,
+            "Direct GPIO servo control initialized (x GPIO=%d, y GPIO=%d)",
+            HORIZONTAL_GPIO,
+            VERTICAL_GPIO,
         )
 
     async def handle_command(self, websocket: ServerConnection, parts: list[str]) -> None:
@@ -107,14 +101,19 @@ class ServoController:
         return max(self.servo_min_deg, min(self.servo_max_deg, angle))
 
     def _write_axis(self, axis: str, logical_angle: float) -> None:
-        if self.kit is None:
+        if self.pi is None:
             return
 
-        physical_angle = self._logical_to_physical(logical_angle)
-        channel = HORIZONTAL_CHANNEL if axis == "x" else VERTICAL_CHANNEL
-        self.kit.servo[channel].angle = physical_angle
+        gpio_pin = HORIZONTAL_GPIO if axis == "x" else VERTICAL_GPIO
+        pulsewidth = self._logical_to_pulsewidth(logical_angle)
+        self.pi.set_servo_pulsewidth(gpio_pin, pulsewidth)
 
-    def _logical_to_physical(self, logical_angle: float) -> float:
+    def _logical_to_pulsewidth(self, logical_angle: float) -> int:
         clamped = self._clamp_servo(logical_angle)
-        # Control protocol uses centered angles (e.g. -90..90). ServoKit expects 0..180.
-        return max(0.0, min(180.0, 90.0 + clamped))
+        input_span = self.servo_max_deg - self.servo_min_deg
+        if input_span <= 0:
+            return int((SERVO_MIN_PULSE_US + SERVO_MAX_PULSE_US) / 2)
+
+        normalized = (clamped - self.servo_min_deg) / input_span
+        pulse = SERVO_MIN_PULSE_US + normalized * (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US)
+        return int(round(pulse))
