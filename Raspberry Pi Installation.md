@@ -82,14 +82,25 @@ python -c "from websockets.asyncio.server import ServerConnection, serve; print(
 python -c "from rpi_hardware_pwm import HardwarePWM; print('rpi_hardware_pwm OK')"
 ```
 
-## 6. Test the Control Server Manually
+## 6. Enable 2-Channel PWM
+Before servo PWM control will work correctly, the proper configuration needs to be updated in ``/boot/config.txt``. To do so, open the file:
+```sh
+sudo nano /boot/firmware/config.txt
+```
+and add the following lines near the end of the file:
+```sh
+# Enables hardware PWM for precise servo control
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+```
+
+## 7. Test the Control Server Manually
 While still inside the virtual environment, you can test run the control server:
 ```sh
 python "/opt/petcar33/app/Control Server/control_server.py"
 ```
 If everything works, use ``Ctrl+C`` to exit the server and type ``deactivate`` to exit the virtual environment shell.
 
-## 7. Start Control Server at Boot
+## 8. Start Control Server at Boot
 To start the control server at system boot, we'll be using a systemd service. To do so, run the following to create the service:
 ```sh
 sudo nano /etc/systemd/system/petcar33-control.service
