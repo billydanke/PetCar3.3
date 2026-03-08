@@ -4,19 +4,23 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from websockets.asyncio.server import ServerConnection
 
 try:
-    import pigpio
+    from gpiozero import AngularServo
 except ImportError:  # pragma: no cover - expected on non-hardware dev machines
-    pigpio = None  # type: ignore[assignment]
+    AngularServo = None  # type: ignore[assignment]
 
+if TYPE_CHECKING:
+    from gpiozero import AngularServo as AngularServoType
 
 HORIZONTAL_GPIO = 12
 VERTICAL_GPIO = 13
-SERVO_MIN_PULSE_US = 1000
-SERVO_MAX_PULSE_US = 2000
+SERVO_MIN_PULSE_S = 0.001
+SERVO_MAX_PULSE_S = 0.002
+SERVO_FRAME_WIDTH_S = 0.02
 
 
 @dataclass(slots=True)
@@ -31,17 +35,36 @@ class ServoController:
         self.servo_min_deg = servo_min_deg
         self.servo_max_deg = servo_max_deg
         self.state = ServoState()
-        self.pi: pigpio.pi | None = None
+        self.servo_x_device: AngularServoType | None = None
+        self.servo_y_device: AngularServoType | None = None
 
-        if pigpio is None:
-            self.logger.warning("pigpio is not installed; servo commands will be simulated.")
+        if AngularServo is None:
+            self.logger.warning("gpiozero is not installed; servo commands will be simulated.")
             return
 
-        self.pi = pigpio.pi()
-        if not self.pi.connected:
-            self.pi = None
+        try:
+            self.servo_x_device = AngularServo(
+                pin=HORIZONTAL_GPIO,
+                min_angle=float(self.servo_min_deg),
+                max_angle=float(self.servo_max_deg),
+                min_pulse_width=SERVO_MIN_PULSE_S,
+                max_pulse_width=SERVO_MAX_PULSE_S,
+                frame_width=SERVO_FRAME_WIDTH_S,
+            )
+            self.servo_y_device = AngularServo(
+                pin=VERTICAL_GPIO,
+                min_angle=float(self.servo_min_deg),
+                max_angle=float(self.servo_max_deg),
+                min_pulse_width=SERVO_MIN_PULSE_S,
+                max_pulse_width=SERVO_MAX_PULSE_S,
+                frame_width=SERVO_FRAME_WIDTH_S,
+            )
+        except Exception:
+            self.servo_x_device = None
+            self.servo_y_device = None
             self.logger.warning(
-                "Could not connect to pigpio daemon; servo commands will be simulated."
+                "Could not initialize gpiozero servos; servo commands will be simulated.",
+                exc_info=True,
             )
             return
 
@@ -101,19 +124,13 @@ class ServoController:
         return max(self.servo_min_deg, min(self.servo_max_deg, angle))
 
     def _write_axis(self, axis: str, logical_angle: float) -> None:
-        if self.pi is None:
+        clamped = self._clamp_servo(logical_angle)
+        if axis == "x":
+            if self.servo_x_device is None:
+                return
+            self.servo_x_device.angle = clamped
             return
 
-        gpio_pin = HORIZONTAL_GPIO if axis == "x" else VERTICAL_GPIO
-        pulsewidth = self._logical_to_pulsewidth(logical_angle)
-        self.pi.set_servo_pulsewidth(gpio_pin, pulsewidth)
-
-    def _logical_to_pulsewidth(self, logical_angle: float) -> int:
-        clamped = self._clamp_servo(logical_angle)
-        input_span = self.servo_max_deg - self.servo_min_deg
-        if input_span <= 0:
-            return int((SERVO_MIN_PULSE_US + SERVO_MAX_PULSE_US) / 2)
-
-        normalized = (clamped - self.servo_min_deg) / input_span
-        pulse = SERVO_MIN_PULSE_US + normalized * (SERVO_MAX_PULSE_US - SERVO_MIN_PULSE_US)
-        return int(round(pulse))
+        if self.servo_y_device is None:
+            return
+        self.servo_y_device.angle = clamped

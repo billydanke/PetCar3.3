@@ -17,13 +17,14 @@ sudo apt install -y \
   python3-venv \
   python3-pip \
   python3-dev \
-  python3-rpi.gpio \
+  python3-gpiozero \
+  python3-lgpio \
   i2c-tools \
   python3-smbus \
   libffi-dev \
   libssl-dev
 ```
-This will ensure Git, Python, Python GPIO, and I2C tools are properly installed before we continue. If you'd like, you can check the versions of Python and Git using the following commands:
+This will ensure Git, Python, GPIO Zero, and I2C tools are properly installed before we continue. If you'd like, you can check the versions of Python and Git using the following commands:
 ```sh
 python --version
 git --version
@@ -78,7 +79,7 @@ pip install "websockets>=16"
 Once installed, you can test to make sure things are working:
 ```sh
 python -c "from websockets.asyncio.server import ServerConnection, serve; print('websockets OK')"
-python -c "import RPi.GPIO as GPIO; print('RPi.GPIO OK')"
+python -c "from gpiozero import AngularServo; print('gpiozero OK')"
 ```
 
 ## 6. Test the Control Server Manually
