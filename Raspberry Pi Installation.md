@@ -24,7 +24,7 @@ sudo apt install -y \
   libffi-dev \
   libssl-dev
 ```
-This will ensure Git, Python, GPIO Zero, and I2C tools are properly installed before we continue. If you'd like, you can check the versions of Python and Git using the following commands:
+This will ensure Git, Python, and I2C tools are properly installed before we continue. If you'd like, you can check the versions of Python and Git using the following commands:
 ```sh
 python --version
 git --version
@@ -57,7 +57,7 @@ ls -la
 ```
 
 ## 4. Create the Python Virtual Environment
-As of writing, Debian now requires python packages installed via pip to be done so inside of a virtual environment. Because RPi.GPIO was installed via apt, the easiest way to use it inside of the virtual environment is by creating the ``venv`` with access to system site packages. To create the environment, run the following:
+As of writing, Debian now requires python packages installed via pip to be done so inside of a virtual environment. To create the environment, run the following:
 ```sh
 python -m venv --system-site-packages /opt/petcar33/venv
 ```
@@ -74,12 +74,12 @@ pip install --upgrade pip setuptools wheel
 ## 5. Install the Necessary Python Packages
 While still inside the virtual environment, run the following to install the necessary python packages for the control server:
 ```sh
-pip install "websockets>=16"
+pip install "websockets>=16" rpi-hardware-pwm
 ```
 Once installed, you can test to make sure things are working:
 ```sh
 python -c "from websockets.asyncio.server import ServerConnection, serve; print('websockets OK')"
-python -c "from gpiozero import AngularServo; print('gpiozero OK')"
+python -c "from rpi_hardware_pwm import HardwarePWM; print('rpi_hardware_pwm OK')"
 ```
 
 ## 6. Test the Control Server Manually
