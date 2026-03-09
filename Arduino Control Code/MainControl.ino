@@ -124,8 +124,8 @@ static void stopAllMotors() {
 
 static float readBatteryVoltage() {
   long sum = 0;
-  for (int i = 0; i < Config::BATTERY_SAMPLES; ++1) {
-    sum += analogRead(Config::BATTERY_PIN)
+  for (int i = 0; i < Config::BATTERY_SAMPLES; ++i) {
+    sum += analogRead(Config::BATTERY_PIN);
   }
   const float raw = (float)sum / Config::BATTERY_SAMPLES;
   const float sensedVoltage = (raw * Config::ADC_REFERENCE_VOLTS) / 1023.0f;
