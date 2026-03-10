@@ -67,15 +67,19 @@ class ArduinoSerialTransport:
         if response is None:
             return None
 
+        if response.lower().startswith("dbg "):
+            self.logger.warning("Arduino debug response to battery query: %r", response)
+            return None
+
         parts = response.split()
         if len(parts) != 2 or parts[0].lower() != "b":
-            self.logger.warning("Unexpected battery response from Arduino: %s", response)
+            self.logger.warning("Unexpected battery response from Arduino: %r", response)
             return None
 
         try:
             percent = int(parts[1])
         except ValueError:
-            self.logger.warning("Invalid battery percent from Arduino: %s", response)
+            self.logger.warning("Invalid battery percent from Arduino: %r", response)
             return None
 
         return max(0, min(100, percent))
@@ -110,15 +114,25 @@ class ArduinoSerialTransport:
             self._serial.reset_input_buffer()
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
-            response = self._serial.readline().decode("ascii", errors="ignore").strip()
+            response_bytes = self._serial.readline()
         except Exception:
             self.logger.warning("Failed to query Arduino over serial: %s", command, exc_info=True)
             return None
 
-        if not response:
+        if not response_bytes:
             self.logger.warning("Timed out waiting for Arduino response to '%s'", command)
             return None
 
+        response = response_bytes.decode("ascii", errors="ignore").strip()
+        if not response:
+            self.logger.warning(
+                "Arduino returned non-text or whitespace-only response to '%s': %s",
+                command,
+                response_bytes.hex(" "),
+            )
+            return None
+
+        self.logger.debug("Arduino raw response to '%s': %r [%s]", command, response, response_bytes.hex(" "))
         return response
 
     def _warn_unavailable(self, command: str) -> None:

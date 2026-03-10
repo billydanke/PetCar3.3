@@ -27,6 +27,7 @@
 namespace Config {
   constexpr unsigned long SERIAL_BAUD = 9600;
   constexpr size_t LINE_BUFFER_SIZE = 96;
+  constexpr unsigned long SERIAL_LINE_TIMEOUT_MS = 25;
 
   constexpr int INPUT_MIN = -100;
   constexpr int INPUT_MAX = 100;
@@ -74,6 +75,7 @@ struct DriveVector {
 
 static char gLineBuffer[Config::LINE_BUFFER_SIZE];
 static size_t gLineLength = 0;
+static unsigned long gLastSerialByteMs = 0;
 
 static int clampPercent(int value) {
   if (value > Config::INPUT_MAX) {
@@ -201,6 +203,7 @@ static void driveMecanum(const DriveVector &drive) {
 static bool readSerialLine(char *outLine, size_t outSize) {
   while (Serial.available() > 0) {
     const char c = (char)Serial.read();
+    gLastSerialByteMs = millis();
 
     if (c == '\r') {
       continue;
@@ -217,6 +220,17 @@ static bool readSerialLine(char *outLine, size_t outSize) {
     if (gLineLength < (Config::LINE_BUFFER_SIZE - 1)) {
       gLineBuffer[gLineLength++] = c;
     }
+  }
+
+  if (
+    gLineLength > 0 &&
+    (millis() - gLastSerialByteMs) >= Config::SERIAL_LINE_TIMEOUT_MS
+  ) {
+    gLineBuffer[gLineLength] = '\0';
+    strncpy(outLine, gLineBuffer, outSize);
+    outLine[outSize - 1] = '\0';
+    gLineLength = 0;
+    return true;
   }
 
   return false;
@@ -268,6 +282,13 @@ static void respondBatteryQuery() {
   Serial.println(percent);
 }
 
+static void respondDebugEcho(const char *reason, const char *commandLine) {
+  Serial.print("dbg ");
+  Serial.print(reason);
+  Serial.print(" ");
+  Serial.println(commandLine);
+}
+
 static bool isBatteryQuery(const char *argument) {
   if (argument == nullptr) {
     return true;
@@ -298,6 +319,7 @@ static void processCommand(char *commandLine) {
 
   char *command = strtok(commandCopy, " ");
   if (command == nullptr) {
+    respondDebugEcho("null", commandLine);
     return;
   }
 
@@ -306,6 +328,8 @@ static void processCommand(char *commandLine) {
       DriveVector drive;
       if (parseDriveVector(commandLine, drive)) {
         driveMecanum(drive);
+      } else {
+        respondDebugEcho("bad-m", commandLine);
       }
       break;
     }
@@ -314,11 +338,14 @@ static void processCommand(char *commandLine) {
       char *argument = strtok(nullptr, " ");
       if (isBatteryQuery(argument)) {
         respondBatteryQuery();
+      } else {
+        respondDebugEcho("bad-b", commandLine);
       }
       break;
     }
 
     default:
+      respondDebugEcho("unknown", commandLine);
       break;
   }
 }
