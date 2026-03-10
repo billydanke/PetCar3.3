@@ -36,6 +36,7 @@ class ServerConfig:
     arduino_port: str = "/dev/serial0"
     arduino_baud_rate: int = 9600
     arduino_timeout_s: float = 0.5
+    heartbeat_interval_s: float = 1.0
 
 
 class ControlServer:
@@ -104,6 +105,20 @@ class ControlServer:
         remote = websocket.remote_address
         return str(remote) if remote is not None else "unknown-client"
 
+    async def run_heartbeat_loop(self) -> None:
+        interval_s = max(0.1, self.config.heartbeat_interval_s)
+        self.logger.info("Arduino heartbeat loop started at %.2fs interval", interval_s)
+
+        try:
+            while True:
+                sent = await self.arduino.send_heartbeat()
+                if not sent:
+                    self.logger.debug("Arduino heartbeat send failed")
+                await asyncio.sleep(interval_s)
+        except asyncio.CancelledError:
+            self.logger.info("Arduino heartbeat loop stopped")
+            raise
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="PetCar3.3 websocket control server")
@@ -114,6 +129,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--arduino-port", default="/dev/serial0", help="Arduino serial port")
     parser.add_argument("--arduino-baud", type=int, default=9600, help="Arduino serial baud rate")
     parser.add_argument("--arduino-timeout", type=float, default=0.5, help="Arduino serial read/write timeout in seconds")
+    parser.add_argument("--heartbeat-interval", type=float, default=1.0, help="Seconds between Arduino heartbeat messages")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging verbosity")
     return parser
 
@@ -121,12 +137,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
 async def run_server(config: ServerConfig) -> None:
     controller = ControlServer(config)
     async with serve(controller.handler, config.host, config.port):
+        heartbeat_task = asyncio.create_task(controller.run_heartbeat_loop(), name="arduino-heartbeat")
         controller.logger.info(
             "Control server listening on ws://%s:%d",
             config.host,
             config.port,
         )
-        await asyncio.Future()
+        try:
+            await asyncio.Future()
+        finally:
+            heartbeat_task.cancel()
+            await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
 def main() -> None:
@@ -146,6 +167,7 @@ def main() -> None:
         arduino_port=args.arduino_port,
         arduino_baud_rate=args.arduino_baud,
         arduino_timeout_s=args.arduino_timeout,
+        heartbeat_interval_s=args.heartbeat_interval,
     )
     asyncio.run(run_server(config))
 

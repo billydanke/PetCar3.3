@@ -41,6 +41,9 @@ class ArduinoSerialTransport:
         command = f"m x {x} y {y} r {rotation}"
         return await self.send_line(command)
 
+    async def send_heartbeat(self) -> bool:
+        return await self.send_line("h")
+
     async def query_battery_percent(self) -> int | None:
         response = await self.request_line("b query")
         if response is None:
