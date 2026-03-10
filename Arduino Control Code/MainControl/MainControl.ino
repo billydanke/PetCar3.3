@@ -21,6 +21,7 @@
 
   Battery input:
     A7 reads pack voltage through a 1:2 divider.
+    Battery replies are reported as percent.
 */
 
 namespace Config {
@@ -34,6 +35,8 @@ namespace Config {
   constexpr float ADC_REFERENCE_VOLTS = 5.0f; // Update this with the actual regulated voltage with the pi on.
   constexpr float BATTERY_DIVIDER_GAIN = 2.0f;
   constexpr int BATTERY_SAMPLES = 8;
+  constexpr float BATTERY_EMPTY_VOLTS = 6.0f;
+  constexpr float BATTERY_FULL_VOLTS = 8.4f;
 
   // Placeholder only until the WS2812B data pin is assigned.
   constexpr int LED_DATA_PIN = -1;
@@ -130,6 +133,22 @@ static float readBatteryVoltage() {
   const float raw = (float)sum / Config::BATTERY_SAMPLES;
   const float sensedVoltage = (raw * Config::ADC_REFERENCE_VOLTS) / 1023.0f;
   return sensedVoltage * Config::BATTERY_DIVIDER_GAIN;
+}
+
+static int batteryVoltageToPercent(float voltage) {
+  const float span = Config::BATTERY_FULL_VOLTS - Config::BATTERY_EMPTY_VOLTS;
+  if (span <= 0.0f) {
+    return 0;
+  }
+
+  float normalized = (voltage - Config::BATTERY_EMPTY_VOLTS) / span;
+  if (normalized < 0.0f) {
+    normalized = 0.0f;
+  } else if (normalized > 1.0f) {
+    normalized = 1.0f;
+  }
+
+  return (int)lroundf(normalized * 100.0f);
 }
 
 static void handleLedPlaceholder() {
@@ -244,9 +263,9 @@ static bool parseDriveVector(char *command, DriveVector &drive) {
 }
 
 static void respondBatteryQuery() {
-  const float voltage = readBatteryVoltage();
+  const int percent = batteryVoltageToPercent(readBatteryVoltage());
   Serial.print("b ");
-  Serial.println(voltage, 3);
+  Serial.println(percent);
 }
 
 static bool isBatteryQuery(const char *argument) {
