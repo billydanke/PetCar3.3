@@ -123,7 +123,7 @@ function stopDrive() {
 
 function beginContinuousSend() {
   if (sendTimer) return;
-  sendTimer = setInterval(sendDrive, 80);
+  sendTimer = setInterval(sendDrive, 200);
 }
 
 function endContinuousSend() {
