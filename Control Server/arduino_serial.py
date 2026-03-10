@@ -31,28 +31,7 @@ class ArduinoSerialTransport:
             self.logger.warning("pyserial is not installed; Arduino serial commands will be unavailable.")
             return
 
-        try:
-            self._serial = serial.Serial(
-                port=self.config.port,
-                baudrate=self.config.baud_rate,
-                timeout=self.config.timeout_s,
-                write_timeout=self.config.timeout_s,
-            )
-        except Exception:
-            self.logger.warning(
-                "Could not open Arduino serial port %s at %d baud; serial commands will be unavailable.",
-                self.config.port,
-                self.config.baud_rate,
-                exc_info=True,
-            )
-            self._serial = None
-            return
-
-        self.logger.info(
-            "Arduino serial connected on %s at %d baud",
-            self.config.port,
-            self.config.baud_rate,
-        )
+        self._open_serial(initial=True)
 
     @property
     def is_available(self) -> bool:
@@ -93,7 +72,7 @@ class ArduinoSerialTransport:
             return await asyncio.to_thread(self._request_line_blocking, command)
 
     def _send_line_blocking(self, command: str) -> bool:
-        if self._serial is None:
+        if not self._ensure_serial():
             self._warn_unavailable(command)
             return False
 
@@ -103,20 +82,21 @@ class ArduinoSerialTransport:
             return True
         except Exception:
             self.logger.warning("Failed to write Arduino serial command: %s", command, exc_info=True)
+            self._handle_serial_failure()
             return False
 
     def _request_line_blocking(self, command: str) -> str | None:
-        if self._serial is None:
+        if not self._ensure_serial():
             self._warn_unavailable(command)
             return None
 
         try:
-            self._serial.reset_input_buffer()
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
             response_bytes = self._serial.readline()
         except Exception:
             self.logger.warning("Failed to query Arduino over serial: %s", command, exc_info=True)
+            self._handle_serial_failure()
             return None
 
         if not response_bytes:
@@ -141,3 +121,54 @@ class ArduinoSerialTransport:
 
         self._warned_unavailable = True
         self.logger.warning("Arduino serial unavailable; dropping command: %s", command)
+
+    def _ensure_serial(self) -> bool:
+        if self._serial is not None:
+            return True
+
+        if serial is None:
+            return False
+
+        self._open_serial(initial=False)
+        return self._serial is not None
+
+    def _open_serial(self, initial: bool) -> None:
+        if serial is None:
+            self._serial = None
+            return
+
+        try:
+            self._serial = serial.Serial(
+                port=self.config.port,
+                baudrate=self.config.baud_rate,
+                timeout=self.config.timeout_s,
+                write_timeout=self.config.timeout_s,
+            )
+        except Exception:
+            self._serial = None
+            message = (
+                "Could not open Arduino serial port %s at %d baud; serial commands will be unavailable."
+                if initial
+                else "Could not reopen Arduino serial port %s at %d baud; serial commands remain unavailable."
+            )
+            self.logger.warning(message, self.config.port, self.config.baud_rate, exc_info=True)
+            return
+
+        self._warned_unavailable = False
+        message = (
+            "Arduino serial connected on %s at %d baud"
+            if initial
+            else "Arduino serial reconnected on %s at %d baud"
+        )
+        self.logger.info(message, self.config.port, self.config.baud_rate)
+
+    def _handle_serial_failure(self) -> None:
+        if self._serial is None:
+            return
+
+        try:
+            self._serial.close()
+        except Exception:
+            self.logger.debug("Ignoring error while closing failed Arduino serial handle", exc_info=True)
+        finally:
+            self._serial = None
