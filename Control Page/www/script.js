@@ -101,9 +101,9 @@ function updateCurrentFromIntent() {
 }
 
 function applyDrive(x, y, rotation) {
-  const [nx, ny] = normalize(x, y);
-  intent.x = clamp(nx, -1, 1);
-  intent.y = clamp(ny, -1, 1);
+  //const [nx, ny] = normalize(x, y);
+  intent.x = clamp(x, -1, 1);
+  intent.y = clamp(y, -1, 1);
   intent.r = clamp(rotation, -1, 1);
   updateCurrentFromIntent();
 }
