@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
@@ -28,6 +29,7 @@ namespace Config {
   constexpr unsigned long SERIAL_BAUD = 9600;
   constexpr size_t LINE_BUFFER_SIZE = 96;
   constexpr unsigned long SERIAL_LINE_TIMEOUT_MS = 25;
+  constexpr unsigned long HEARTBEAT_TIMEOUT_MS = 2000;
 
   constexpr int INPUT_MIN = -100;
   constexpr int INPUT_MAX = 100;
@@ -39,8 +41,9 @@ namespace Config {
   constexpr float BATTERY_EMPTY_VOLTS = 6.0f;
   constexpr float BATTERY_FULL_VOLTS = 8.4f;
 
-  // Placeholder only until the WS2812B data pin is assigned.
-  constexpr int LED_DATA_PIN = -1;
+  // WS2812B data pin.
+  constexpr uint8_t LED_DATA_PIN = 2;
+  constexpr uint8_t STATUS_LED_COUNT = 1;
 
   // Front-left motor on left driver IN4/IN3.
   constexpr uint8_t FL_PWM_PIN = 9;
@@ -76,6 +79,21 @@ struct DriveVector {
 static char gLineBuffer[Config::LINE_BUFFER_SIZE];
 static size_t gLineLength = 0;
 static unsigned long gLastSerialByteMs = 0;
+static unsigned long gLastHeartbeatMs = 0;
+static bool gHeartbeatSeen = false;
+
+enum class StatusLedState : uint8_t {
+  WaitingForHeartbeat,
+  HeartbeatOk,
+  HeartbeatLost,
+};
+
+static Adafruit_NeoPixel gStatusLed(
+  Config::STATUS_LED_COUNT,
+  Config::LED_DATA_PIN,
+  NEO_GRB + NEO_KHZ800
+);
+static StatusLedState gStatusLedState = StatusLedState::WaitingForHeartbeat;
 
 static int clampPercent(int value) {
   if (value > Config::INPUT_MAX) {
@@ -153,10 +171,60 @@ static int batteryVoltageToPercent(float voltage) {
   return (int)lroundf(normalized * 100.0f);
 }
 
-static void handleLedPlaceholder() {
-  if (Config::LED_DATA_PIN >= 0) {
-    pinMode((uint8_t)Config::LED_DATA_PIN, OUTPUT);
+static bool isHeartbeatHealthy() {
+  return
+    gHeartbeatSeen &&
+    (millis() - gLastHeartbeatMs) < Config::HEARTBEAT_TIMEOUT_MS;
+}
+
+static uint32_t getStatusLedColor(StatusLedState state) {
+  switch (state) {
+    case StatusLedState::HeartbeatOk:
+      return gStatusLed.Color(0, 255, 0);
+    case StatusLedState::HeartbeatLost:
+      return gStatusLed.Color(255, 0, 0);
+    case StatusLedState::WaitingForHeartbeat:
+    default:
+      return gStatusLed.Color(255, 180, 0);
   }
+}
+
+static void setStatusLedState(StatusLedState state) {
+  if (gStatusLedState == state) {
+    return;
+  }
+
+  gStatusLedState = state;
+  gStatusLed.setPixelColor(0, getStatusLedColor(state));
+  gStatusLed.show();
+}
+
+static void initializeStatusLed() {
+  gStatusLed.begin();
+  gStatusLed.setBrightness(255);
+  gStatusLedState = StatusLedState::HeartbeatLost;
+  setStatusLedState(StatusLedState::WaitingForHeartbeat);
+}
+
+static void recordHeartbeat() {
+  gHeartbeatSeen = true;
+  gLastHeartbeatMs = millis();
+  setStatusLedState(StatusLedState::HeartbeatOk);
+}
+
+static void enforceHeartbeatFailsafe() {
+  if (!gHeartbeatSeen) {
+    setStatusLedState(StatusLedState::WaitingForHeartbeat);
+    return;
+  }
+
+  if (isHeartbeatHealthy()) {
+    setStatusLedState(StatusLedState::HeartbeatOk);
+    return;
+  }
+
+  stopAllMotors();
+  setStatusLedState(StatusLedState::HeartbeatLost);
 }
 
 static void driveMecanum(const DriveVector &drive) {
@@ -324,7 +392,16 @@ static void processCommand(char *commandLine) {
   }
 
   switch (tolower(command[0])) {
+    case 'h':
+      recordHeartbeat();
+      break;
+
     case 'm': {
+      if (!isHeartbeatHealthy()) {
+        stopAllMotors();
+        break;
+      }
+
       DriveVector drive;
       if (parseDriveVector(commandLine, drive)) {
         driveMecanum(drive);
@@ -362,9 +439,10 @@ void setup() {
   pinMode(Config::RR_PWM_PIN, OUTPUT);
   pinMode(Config::RR_DIR_PIN, OUTPUT);
   pinMode(Config::BATTERY_PIN, INPUT);
+  pinMode(Config::LED_DATA_PIN, OUTPUT);
 
   stopAllMotors();
-  handleLedPlaceholder();
+  initializeStatusLed();
 }
 
 void loop() {
@@ -372,4 +450,6 @@ void loop() {
   if (readSerialLine(commandLine, sizeof(commandLine))) {
     processCommand(commandLine);
   }
+
+  enforceHeartbeatFailsafe();
 }
