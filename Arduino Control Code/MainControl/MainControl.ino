@@ -24,7 +24,7 @@
 */
 
 namespace Config {
-  constexpr unsigned long SERIAL_BAUD = 115200;
+  constexpr unsigned long SERIAL_BAUD = 9600;
   constexpr size_t LINE_BUFFER_SIZE = 96;
 
   constexpr int INPUT_MIN = -100;
