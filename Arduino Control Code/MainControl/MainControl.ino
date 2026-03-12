@@ -64,8 +64,8 @@ namespace Config {
   constexpr uint8_t BATTERY_PIN = A7;
 
   // Adjust these after the first wheel-spin check if any wheel runs backwards.
-  constexpr int8_t FL_SIGN = +1;
-  constexpr int8_t FR_SIGN = +1;
+  constexpr int8_t FL_SIGN = -1;
+  constexpr int8_t FR_SIGN = -1;
   constexpr int8_t RL_SIGN = +1;
   constexpr int8_t RR_SIGN = +1;
 }
