@@ -30,6 +30,14 @@ python --version
 git --version
 ```
 
+Next, enter `raspi-config` using the following command:
+```sh
+sudo raspi-config
+```
+where you will want to confirm that Serial is <b>enabled</b>, and that the Serial Shell is <b>disabled</b>.
+
+Once that is done, you can exit the config.
+
 ## 2. Create the App Directory
 Many of the PetCar3.3 sofrware components, such as the control server and the git repo itself, will exist within an application directory. To make that directory (and set folder ownership to user), run the following commands:
 ```sh
