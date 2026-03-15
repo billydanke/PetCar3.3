@@ -3,114 +3,200 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Robot Control Console</title>
+  <title>PetCar Control Console</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="app">
-
-    <section class="panel">
-
+    <aside class="panel settings-panel">
       <div class="panel-head">
-        <h2>Camera Feed</h2>
-        <div class="status">
-          <span id="wsDot" class="dot" aria-hidden="true"></span>
-          <span id="wsState">Disconnected</span>
+        <div>
+          <h2>Connection Settings</h2>
         </div>
       </div>
 
-      <div class="video-wrap">
-        <iframe id="cameraFrame" title="Robot camera" src="http://192.168.0.106:8889/cam"></iframe>
-        <div class="camera-overlay">
-          <div class="battery">
-            <div id="batteryBar" class="battery-bar"></div>
-            <div id="batteryText" class="battery-text">Battery --%</div>
+      <div class="panel-body settings-body">
+        <label class="field">
+          <span class="field-label">Base IP Address</span>
+          <input id="baseIp" type="text" value="192.168.0.106" autocomplete="off" spellcheck="false" />
+        </label>
+
+        <div class="field-grid">
+          <label class="field">
+            <span class="field-label">Camera Port</span>
+            <input id="cameraPort" type="text" value="8889" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span class="field-label">Camera Path</span>
+            <input id="cameraPath" type="text" value="/cam" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field-label">WebSocket Port</span>
+          <input id="wsPort" type="text" value="8080" autocomplete="off" spellcheck="false" />
+        </label>
+
+        <div class="preview-card">
+          <div class="preview-row">
+            <span class="preview-label">Camera URL</span>
+            <code id="cameraUrlPreview"></code>
+          </div>
+          <div class="preview-row">
+            <span class="preview-label">WebSocket URL</span>
+            <code id="wsUrlPreview"></code>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button id="connectBtn" class="btn btn-primary">Connect</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel stage-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Camera Feed</h2>
+        </div>
+        <div class="status-group">
+          <div class="status-chip">
+            <span id="wsDot" class="dot" aria-hidden="true"></span>
+            <span id="wsState">Disconnected</span>
+          </div>
+          <div class="status-chip muted">
+            <span>Signal</span>
+            <span id="signalState">Pending</span>
           </div>
         </div>
       </div>
 
-      <div class="conn">
-        <div class="row">
-          <input id="wsUrl" type="text" value="ws://192.168.0.106:8080" />
-          <button id="connectBtn" class="btn">Connect</button>
+      <div class="panel-body stage-body">
+        <div class="video-shell">
+          <iframe id="cameraFrame" title="Robot camera"></iframe>
+
+          <div class="camera-overlay top-right">
+            <div class="hud-card battery-card">
+              <div class="battery-topline">
+                <span>Battery</span>
+                <span id="batteryText">--%</span>
+              </div>
+              <div class="battery-track">
+                <div id="batteryBar" class="battery-bar"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="camera-overlay bottom-left">
+            <section class="overlay-card drive-card" aria-label="Drive controls">
+              <div class="overlay-head">
+                <span>Drive</span>
+                <span class="overlay-subtitle">W A S D + Q E</span>
+              </div>
+
+              <div class="drive-grid">
+                <button id="driveRotateLeft" class="drive-btn rotate-btn" data-drive-action="rotate-left" aria-label="Rotate left">
+                  <span class="icon">↺</span>
+                  <span class="keycap">Q</span>
+                </button>
+                <button id="driveForward" class="drive-btn" data-drive-action="forward" aria-label="Drive forward">
+                  <span class="icon">↑</span>
+                  <span class="keycap">W</span>
+                </button>
+                <button id="driveRotateRight" class="drive-btn rotate-btn" data-drive-action="rotate-right" aria-label="Rotate right">
+                  <span class="icon">↻</span>
+                  <span class="keycap">E</span>
+                </button>
+
+                <button id="driveLeft" class="drive-btn" data-drive-action="left" aria-label="Translate left">
+                  <span class="icon">←</span>
+                  <span class="keycap">A</span>
+                </button>
+                <button id="driveStop" class="drive-btn stop-btn" data-drive-action="stop" aria-label="Stop all drive motion">
+                  <span class="icon">STOP</span>
+                  <span class="keycap">SPACE</span>
+                </button>
+                <button id="driveRight" class="drive-btn" data-drive-action="right" aria-label="Translate right">
+                  <span class="icon">→</span>
+                  <span class="keycap">D</span>
+                </button>
+
+                <button id="crawlToggle" class="drive-btn crawl-btn" aria-pressed="false" aria-label="Toggle crawl mode">
+                  <span class="icon">CRAWL</span>
+                  <span class="keycap">CTRL</span>
+                </button>
+                <button id="driveBackward" class="drive-btn" data-drive-action="backward" aria-label="Drive backward">
+                  <span class="icon">↓</span>
+                  <span class="keycap">S</span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="camera-overlay bottom-right">
+            <section class="overlay-card servo-card" aria-label="Camera pan and tilt controls">
+              <div class="overlay-head">
+                <span>Pan / Tilt</span>
+                <span class="overlay-subtitle">Arrow Keys</span>
+              </div>
+
+              <div id="servoPad" class="servo-pad" tabindex="0" aria-label="Pan and tilt targeting frame">
+                <div id="servoDot" class="servo-dot" aria-hidden="true"></div>
+              </div>
+
+              <div class="servo-actions">
+                <button id="homeBtn" class="utility-btn" aria-pressed="true">
+                  <span class="utility-text">HOME</span>
+                  <span class="keycap">H</span>
+                </button>
+                <button id="nightvisionToggle" class="utility-btn" aria-pressed="false">
+                  <span class="utility-text">NIGHT VISION</span>
+                  <span class="keycap">SHIFT</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="stage-footer">
+          <div class="telemetry-grid">
+            <div class="telemetry-card">
+              <span class="telemetry-label">Drive Command</span>
+              <code id="driveOut">m x 0 y 0 r 0</code>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">Servo State</span>
+              <code id="servoPacket">s x 0 y 0</code>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">Night Vision</span>
+              <code id="nightvisionState">off</code>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">Last Battery Packet</span>
+              <code id="battPacket">none</code>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">Last Sent</span>
+              <code id="lastSentPacket">none</code>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">Last Received</span>
+              <code id="lastRecvPacket">none</code>
+            </div>
+          </div>
         </div>
       </div>
-      
     </section>
 
-    <section class="panel">
+    <aside class="panel log-panel">
       <div class="panel-head">
-        <h2>Camera Pan/Tilt</h2>
-      </div>
-      <div class="range-wrap">
-        <label for="panRange"><span>Pan</span><span id="panVal">0 deg</span></label>
-        <input id="panRange" type="range" min="-90" max="90" value="0" />
-      </div>
-      <div class="range-wrap">
-        <label for="tiltRange"><span>Tilt</span><span id="tiltVal">0 deg</span></label>
-        <input id="tiltRange" type="range" min="-90" max="90" value="0" />
-      </div>
-      <div class="nightvision-row">
-        <button id="servoQuery" class="ctrl small">Servo Query</button>
-      </div>
-      <div class="nightvision-row">
-        <button id="nightvisionOn" class="ctrl small">Nightvision On</button>
-        <button id="nightvisionOff" class="ctrl small">Nightvision Off</button>
-        <button id="nightvisionQuery" class="ctrl small">Query</button>
-      </div>
-      <div class="telemetry">
-        <div>Nightvision: <code id="nightvisionState">unknown</code></div>
-        <div>Servo state: <code id="servoPacket">none</code></div>
-      </div>
-    </section>
-
-    <section class="controls">
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Mecanum Translation</h2>
+        <div>
+          <h2>Packet Log</h2>
         </div>
-        <div class="pad-grid">
-          <button class="ctrl" data-vx="-1" data-vy="1" data-omega="0">NW</button>
-          <button class="ctrl" data-vx="0" data-vy="1" data-omega="0">N</button>
-          <button class="ctrl" data-vx="1" data-vy="1" data-omega="0">NE</button>
-          <button class="ctrl" data-vx="-1" data-vy="0" data-omega="0">W</button>
-          <button id="stopBtn" class="ctrl">STOP</button>
-          <button class="ctrl" data-vx="1" data-vy="0" data-omega="0">E</button>
-          <button class="ctrl" data-vx="-1" data-vy="-1" data-omega="0">SW</button>
-          <button class="ctrl" data-vx="0" data-vy="-1" data-omega="0">S</button>
-          <button class="ctrl" data-vx="1" data-vy="-1" data-omega="0">SE</button>
-        </div>
-        <div class="hint">Hold a direction to move. Keyboard: W/A/S/D or arrows for translation.</div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Rotation</h2>
-        </div>
-        <div class="rotate-row">
-          <button id="rotLeft" class="ctrl">CCW</button>
-          <button id="rotStop" class="ctrl">Stop</button>
-          <button id="rotRight" class="ctrl">CW</button>
-        </div>
-        <div class="range-wrap">
-          <label for="speedRange"><span>Speed Scale</span><span id="speedVal">100%</span></label>
-          <input id="speedRange" type="range" min="10" max="100" value="100" />
-        </div>
-        <div class="telemetry">
-          <div>Drive command: <code id="driveOut">m x 0 y 0 r 0</code></div>
-          <div>Last battery packet: <code id="battPacket">none</code></div>
-          <div>Last sent: <code id="lastSentPacket">none</code></div>
-          <div>Last received: <code id="lastRecvPacket">none</code></div>
-        </div>
-        <div class="hint">Q/E rotate left/right. Space to stop all motion.</div>
-      </section>
-    </section>
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Packet Log</h2>
       </div>
-      <div id="packetLog" class="packet-log"></div>
-    </section>
+      <div id="packetLog" class="packet-log panel-body"></div>
+    </aside>
   </main>
 
   <script src="script.js"></script>
