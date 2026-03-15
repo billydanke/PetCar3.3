@@ -14,7 +14,7 @@
   --shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
   --radius: 22px;
   --overlay-bg: rgba(0, 0, 0, 0.4);
-  --overlay-edge: rgba(255, 255, 255, 0.55);
+  --overlay-edge: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -419,7 +419,7 @@ iframe {
 }
 
 .servo-card {
-  width: min(310px, calc(100vw - 48px));
+  width: min(280px, calc(100vw - 48px));
 }
 
 .servo-pad {

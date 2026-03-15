@@ -3,7 +3,7 @@ const SERVO_MIN = -90;
 const SERVO_MAX = 90;
 const SERVO_STEP = 5;
 const DRIVE_REPEAT_MS = 200;
-const SERVO_REPEAT_MS = 90;
+const SERVO_REPEAT_MS = 50;
 
 const baseIpInput = document.getElementById("baseIp");
 const cameraPortInput = document.getElementById("cameraPort");
