@@ -37,13 +37,13 @@ body {
 }
 
 .app {
-  width: min(1600px, 100%);
+  width: min(1800px, 100%);
   min-height: 100vh;
   margin: 0 auto;
   padding: 20px;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 320px;
-  gap: 16px;
+  grid-template-columns: 296px minmax(0, 1fr) 280px;
+  gap: 18px;
   align-items: stretch;
 }
 
@@ -105,8 +105,7 @@ body {
 }
 
 .field-label,
-.preview-label,
-.telemetry-label {
+.preview-label {
   color: var(--muted);
   font-size: 0.82rem;
   letter-spacing: 0.04em;
@@ -187,28 +186,33 @@ body {
 
 .stage-body {
   flex: 1;
-  display: grid;
-  gap: 16px;
+  display: flex;
   min-height: 0;
 }
 
 .status-group {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .status-chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 999px;
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   font-size: 0.88rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-chip > span:last-child {
+  min-width: 0;
 }
 
 .status-chip.muted {
@@ -216,6 +220,7 @@ body {
 }
 
 .dot {
+  flex: 0 0 10px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -470,21 +475,6 @@ iframe {
   font-weight: 700;
 }
 
-.stage-footer {
-  display: grid;
-}
-
-.telemetry-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.telemetry-card {
-  display: grid;
-  gap: 8px;
-}
-
 code {
   display: block;
   overflow-wrap: anywhere;
@@ -498,12 +488,15 @@ code {
 
 .log-panel {
   min-height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
 }
 
 .packet-log {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 8px;
   align-content: start;
@@ -533,6 +526,7 @@ code {
   .log-panel {
     grid-column: 1 / -1;
     min-height: 320px;
+    max-height: 320px;
   }
 }
 
@@ -545,10 +539,11 @@ code {
   .stage-panel,
   .log-panel {
     min-height: auto;
+    max-height: none;
   }
 
   .field-grid,
-  .telemetry-grid {
+  .status-group {
     grid-template-columns: 1fr;
   }
 }
@@ -563,10 +558,6 @@ code {
   .panel-body {
     padding-left: 14px;
     padding-right: 14px;
-  }
-
-  .status-group {
-    justify-content: flex-start;
   }
 
   .video-shell {

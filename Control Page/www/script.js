@@ -55,6 +55,12 @@ let servoKeys = new Set();
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+function setText(element, value) {
+  if (element) {
+    element.textContent = value;
+  }
+}
+
 function isTypingTarget(target) {
   return Boolean(
     target &&
@@ -124,9 +130,9 @@ function refreshConnectionPreview(updateFrame = false) {
 
 function setConnected(connected) {
   wsDot.classList.toggle("connected", connected);
-  wsState.textContent = connected ? "Connected" : "Disconnected";
-  connectBtn.textContent = connected ? "Disconnect" : "Connect";
-  signalState.textContent = connected ? "Pending" : "Unavailable";
+  setText(wsState, connected ? "Connected" : "Disconnected");
+  setText(connectBtn, connected ? "Disconnect" : "Connect");
+  setText(signalState, connected ? "Pending" : "Unavailable");
 
   if (!connected) {
     stopBatteryPolling();
@@ -147,7 +153,7 @@ function appendPacketLog(direction, message) {
 function send(command) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   ws.send(command);
-  lastSentPacket.textContent = command;
+  setText(lastSentPacket, command);
   appendPacketLog("tx", command);
   return true;
 }
@@ -162,9 +168,9 @@ function connectWebSocket() {
   saveSettings();
 
   const url = buildWsUrl();
-  wsState.textContent = "Connecting";
-  connectBtn.textContent = "Cancel";
-  signalState.textContent = "Pending";
+  setText(wsState, "Connecting");
+  setText(connectBtn, "Cancel");
+  setText(signalState, "Pending");
   ws = new WebSocket(url);
   ws.addEventListener("open", handleOpen);
   ws.addEventListener("close", handleClose);
@@ -199,7 +205,7 @@ function stopBatteryPolling() {
 function handleBattery(percent) {
   const value = clamp(Number(percent) || 0, 0, 100);
   batteryBar.style.width = `${value}%`;
-  batteryText.textContent = `${value.toFixed(0)}%`;
+  setText(batteryText, `${value.toFixed(0)}%`);
 
   if (value < 20) {
     batteryBar.style.background = "linear-gradient(90deg, #f97316, #ef4444)";
@@ -212,11 +218,11 @@ function handleBattery(percent) {
 
 function handleMessage(event) {
   const message = event.data.trim();
-  lastRecvPacket.textContent = message;
+  setText(lastRecvPacket, message);
   appendPacketLog("rx", message);
 
   if (message.startsWith("b ")) {
-    battPacket.textContent = message;
+    setText(battPacket, message);
     const parts = message.split(/\s+/);
     if (parts.length >= 2) handleBattery(parts[1]);
     return;
@@ -263,7 +269,7 @@ function applyDriveAction(action) {
   current.x = vector.x * scale;
   current.y = vector.y * scale;
   current.r = vector.r * scale;
-  driveOut.textContent = formatDriveCommand();
+  setText(driveOut, formatDriveCommand());
   updateDriveVisuals();
 }
 
@@ -334,7 +340,7 @@ function updateServoUi() {
 
   servoDot.style.left = `${clamp(xPercent, 0, 100)}%`;
   servoDot.style.top = `${clamp(yPercent, 0, 100)}%`;
-  servoPacket.textContent = `s x ${servoState.x} y ${servoState.y}`;
+  setText(servoPacket, `s x ${servoState.x} y ${servoState.y}`);
 
   const homeActive = isServoHome();
   homeBtn.classList.toggle("is-active", homeActive);
@@ -388,7 +394,7 @@ function homeServos() {
 
 function setNightvisionEnabled(enabled) {
   nightvisionEnabled = enabled;
-  nightvisionState.textContent = enabled ? "on" : "off";
+  setText(nightvisionState, enabled ? "on" : "off");
   nightvisionToggle.classList.toggle("is-active", enabled);
   nightvisionToggle.setAttribute("aria-pressed", String(enabled));
 }

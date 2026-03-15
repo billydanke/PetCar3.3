@@ -51,14 +51,7 @@
         <div class="settings-actions">
           <button id="connectBtn" class="btn btn-primary">Connect</button>
         </div>
-      </div>
-    </aside>
 
-    <section class="panel stage-panel">
-      <div class="panel-head">
-        <div>
-          <h2>Camera Feed</h2>
-        </div>
         <div class="status-group">
           <div class="status-chip">
             <span id="wsDot" class="dot" aria-hidden="true"></span>
@@ -68,6 +61,14 @@
             <span>Signal</span>
             <span id="signalState">Pending</span>
           </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel stage-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Camera Feed</h2>
         </div>
       </div>
 
@@ -96,20 +97,20 @@
 
               <div class="drive-grid">
                 <button id="driveRotateLeft" class="drive-btn rotate-btn" data-drive-action="rotate-left" aria-label="Rotate left">
-                  <span class="icon">↺</span>
+                  <span class="icon">&#8634;</span>
                   <span class="keycap">Q</span>
                 </button>
                 <button id="driveForward" class="drive-btn" data-drive-action="forward" aria-label="Drive forward">
-                  <span class="icon">↑</span>
+                  <span class="icon">&#8593;</span>
                   <span class="keycap">W</span>
                 </button>
                 <button id="driveRotateRight" class="drive-btn rotate-btn" data-drive-action="rotate-right" aria-label="Rotate right">
-                  <span class="icon">↻</span>
+                  <span class="icon">&#8635;</span>
                   <span class="keycap">E</span>
                 </button>
 
                 <button id="driveLeft" class="drive-btn" data-drive-action="left" aria-label="Translate left">
-                  <span class="icon">←</span>
+                  <span class="icon">&#8592;</span>
                   <span class="keycap">A</span>
                 </button>
                 <button id="driveStop" class="drive-btn stop-btn" data-drive-action="stop" aria-label="Stop all drive motion">
@@ -117,16 +118,16 @@
                   <span class="keycap">SPACE</span>
                 </button>
                 <button id="driveRight" class="drive-btn" data-drive-action="right" aria-label="Translate right">
-                  <span class="icon">→</span>
+                  <span class="icon">&#8594;</span>
                   <span class="keycap">D</span>
                 </button>
 
                 <button id="crawlToggle" class="drive-btn crawl-btn" aria-pressed="false" aria-label="Toggle crawl mode">
-                  <span class="icon">CRAWL</span>
+                  <span class="utility-text">CRAWL</span>
                   <span class="keycap">CTRL</span>
                 </button>
                 <button id="driveBackward" class="drive-btn" data-drive-action="backward" aria-label="Drive backward">
-                  <span class="icon">↓</span>
+                  <span class="icon">&#8595;</span>
                   <span class="keycap">S</span>
                 </button>
               </div>
@@ -155,35 +156,6 @@
                 </button>
               </div>
             </section>
-          </div>
-        </div>
-
-        <div class="stage-footer">
-          <div class="telemetry-grid">
-            <div class="telemetry-card">
-              <span class="telemetry-label">Drive Command</span>
-              <code id="driveOut">m x 0 y 0 r 0</code>
-            </div>
-            <div class="telemetry-card">
-              <span class="telemetry-label">Servo State</span>
-              <code id="servoPacket">s x 0 y 0</code>
-            </div>
-            <div class="telemetry-card">
-              <span class="telemetry-label">Night Vision</span>
-              <code id="nightvisionState">off</code>
-            </div>
-            <div class="telemetry-card">
-              <span class="telemetry-label">Last Battery Packet</span>
-              <code id="battPacket">none</code>
-            </div>
-            <div class="telemetry-card">
-              <span class="telemetry-label">Last Sent</span>
-              <code id="lastSentPacket">none</code>
-            </div>
-            <div class="telemetry-card">
-              <span class="telemetry-label">Last Received</span>
-              <code id="lastRecvPacket">none</code>
-            </div>
           </div>
         </div>
       </div>
