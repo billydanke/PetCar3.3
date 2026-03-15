@@ -96,7 +96,7 @@
 
               <div class="drive-grid">
                 <button id="driveRotateLeft" class="drive-btn rotate-btn" data-drive-action="rotate-left" aria-label="Rotate left">
-                  <span class="icon">&#8634;</span>
+                  <span class="icon">&#x21B6;</span>
                   <span class="keycap">Q</span>
                 </button>
                 <button id="driveForward" class="drive-btn" data-drive-action="forward" aria-label="Drive forward">
@@ -104,7 +104,7 @@
                   <span class="keycap">W</span>
                 </button>
                 <button id="driveRotateRight" class="drive-btn rotate-btn" data-drive-action="rotate-right" aria-label="Rotate right">
-                  <span class="icon">&#8635;</span>
+                  <span class="icon">&#x21B7;</span>
                   <span class="keycap">E</span>
                 </button>
 
@@ -137,10 +137,16 @@
             <section class="overlay-card servo-card" aria-label="Camera pan and tilt controls">
               <div class="overlay-head">
                 <span>Pan / Tilt</span>
-                <span class="overlay-subtitle">Arrow Keys</span>
               </div>
 
               <div id="servoPad" class="servo-pad" tabindex="0" aria-label="Pan and tilt targeting frame">
+                <div class="servo-pad-hint" aria-hidden="true">
+                  <span class="servo-hint-key up">&#8593;</span>
+                  <span class="servo-hint-key left">&#8592;</span>
+                  <span class="servo-hint-label">Arrow Keys</span>
+                  <span class="servo-hint-key right">&#8594;</span>
+                  <span class="servo-hint-key down">&#8595;</span>
+                </div>
                 <div id="servoDot" class="servo-dot" aria-hidden="true"></div>
               </div>
 
