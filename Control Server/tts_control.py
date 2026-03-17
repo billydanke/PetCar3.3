@@ -22,9 +22,7 @@ class TtsController:
         self.voice_binary = shutil.which(voice_binary)
 
         if self.voice_binary is None:
-            self.logger.warning(
-                "espeak-ng is not installed or not on PATH; TTS commands will return an error."
-            )
+            self.logger.warning("espeak-ng is not installed or not on PATH; TTS commands will return an error.")
 
     async def handle_command(self, websocket: ServerConnection, raw_message: str) -> None:
         message = raw_message.strip()
