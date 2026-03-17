@@ -50,6 +50,8 @@ class TtsController:
     async def _speak_text(self, text: str) -> None:
         process = await asyncio.create_subprocess_exec(
             self.voice_binary,
+            "-ven-us",
+            "-s100",
             text,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
