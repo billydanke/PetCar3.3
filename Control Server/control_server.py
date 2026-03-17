@@ -133,7 +133,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--servo-min", type=int, default=-90, help="Servo minimum angle")
     parser.add_argument("--servo-max", type=int, default=90, help="Servo maximum angle")
     parser.add_argument("--arduino-port", default="/dev/serial0", help="Arduino serial port")
-    parser.add_argument("--arduino-baud", type=int, default=9600, help="Arduino serial baud rate")
+    parser.add_argument("--arduino-baud", type=int, default=19200, help="Arduino serial baud rate")
     parser.add_argument("--arduino-timeout", type=float, default=0.5, help="Arduino serial read/write timeout in seconds")
     parser.add_argument("--heartbeat-interval", type=float, default=1.0, help="Seconds between Arduino heartbeat messages")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging verbosity")
