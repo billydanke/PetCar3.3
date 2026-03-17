@@ -36,7 +36,7 @@ class ServerConfig:
     servo_min_deg: int = -90
     servo_max_deg: int = 90
     arduino_port: str = "/dev/serial0"
-    arduino_baud_rate: int = 9600
+    arduino_baud_rate: int = 19200
     arduino_timeout_s: float = 0.5
     heartbeat_interval_s: float = 1.0
 

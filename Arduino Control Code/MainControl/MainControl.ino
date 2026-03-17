@@ -162,11 +162,11 @@ static int batteryVoltageToPercent(float voltage) {
   }
 
   float normalized = (voltage - Config::BATTERY_EMPTY_VOLTS) / span;
-  if (normalized < 0.0f) {
-    normalized = 0.0f;
-  } else if (normalized > 1.0f) {
-    normalized = 1.0f;
-  }
+  //if (normalized < 0.0f) {
+  //  normalized = 0.0f;
+  //} else if (normalized > 1.0f) {
+  //  normalized = 1.0f;
+  //}
 
   return (int)lroundf(normalized * 100.0f);
 }
