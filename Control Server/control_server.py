@@ -6,6 +6,7 @@ This server accepts the text protocol used by the control page:
 - motor: ``m x 50 y 0 r 25``
 - nightvision: ``n on``, ``n off``, ``n query``
 - battery: ``b query``
+- tts: ``t hello from petcar``
 
 Queries return websocket responses. Motor and battery commands are forwarded
 to the Arduino over serial.
@@ -25,6 +26,7 @@ from battery_control import BatteryController
 from motor_control import MotorController
 from nightvision_control import NightvisionController
 from servo_control import ServoController
+from tts_control import TtsController
 
 
 @dataclass(slots=True)
@@ -60,6 +62,7 @@ class ControlServer:
         )
         self.nightvisionHandler = NightvisionController(logger=self.logger)
         self.batteryHandler = BatteryController(logger=self.logger, transport=self.arduino)
+        self.ttsHandler = TtsController(logger=self.logger)
 
     async def handler(self, websocket: ServerConnection) -> None:
         client = self._client_name(websocket)
@@ -95,6 +98,9 @@ class ControlServer:
             return
         if command == "b":
             await self.batteryHandler.handle_command(websocket, parts)
+            return
+        if command == "t":
+            await self.ttsHandler.handle_command(websocket, raw_message)
             return
 
         await websocket.send(f"error unknown-command {command}")

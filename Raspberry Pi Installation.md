@@ -21,6 +21,7 @@ sudo apt install -y \
   python3-lgpio \
   i2c-tools \
   python3-smbus \
+  espeak-ng \
   libffi-dev \
   libssl-dev
 ```
@@ -88,6 +89,10 @@ Once installed, you can test to make sure things are working:
 ```sh
 python -c "from websockets.asyncio.server import ServerConnection, serve; print('websockets OK')"
 python -c "from rpi_hardware_pwm import HardwarePWM; print('rpi_hardware_pwm OK')"
+```
+For TTS support, the control server uses the system-installed `espeak-ng` binary directly, so no additional Python package is required for baseline speech playback. You can verify that the Pi has the speech engine available with:
+```sh
+espeak-ng --version
 ```
 
 ## 6. Enable 2-Channel PWM
