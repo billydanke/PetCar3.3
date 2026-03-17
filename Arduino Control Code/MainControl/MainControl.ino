@@ -26,7 +26,7 @@
 */
 
 namespace Config {
-  constexpr unsigned long SERIAL_BAUD = 9600;
+  constexpr unsigned long SERIAL_BAUD = 19200;
   constexpr size_t LINE_BUFFER_SIZE = 96;
   constexpr unsigned long SERIAL_LINE_TIMEOUT_MS = 25;
   constexpr unsigned long HEARTBEAT_TIMEOUT_MS = 2000;

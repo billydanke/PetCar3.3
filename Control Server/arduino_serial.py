@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover - expected on non-hardware dev machines
 @dataclass(slots=True)
 class ArduinoSerialConfig:
     port: str = "/dev/serial0"
-    baud_rate: int = 9600
+    baud_rate: int = 19200
     timeout_s: float = 0.5
 
 
