@@ -64,7 +64,7 @@ class ArduinoSerialTransport:
             self.logger.warning("Invalid battery percent from Arduino: %r", response)
             return None
 
-        return max(0, min(100, percent))
+        return percent #max(0, min(100, percent))
 
     async def send_line(self, command: str) -> bool:
         async with self._lock:
