@@ -35,7 +35,7 @@ namespace Config {
   constexpr int INPUT_MAX = 100;
   constexpr int INPUT_DEADZONE = 3;
 
-  constexpr float ADC_REFERENCE_VOLTS = 4.9f; // Update this with the actual regulated voltage with the pi on.
+  constexpr float ADC_REFERENCE_VOLTS = 4.01f; // Update this with the actual regulated voltage with the pi on.
   constexpr float BATTERY_DIVIDER_GAIN = 2.0f;
   constexpr int BATTERY_SAMPLES = 8;
   constexpr float BATTERY_EMPTY_VOLTS = 6.0f;

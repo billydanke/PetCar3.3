@@ -94,6 +94,8 @@ class ArduinoSerialTransport:
             return None
 
         try:
+            # Drop any stale unread bytes before issuing a request/response command.
+            self._serial.reset_input_buffer()
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
             response_bytes = self._serial.readline()
