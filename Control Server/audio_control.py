@@ -20,7 +20,7 @@ class AudioController:
 
     async def handle_command(self, websocket: ServerConnection, raw_message: str) -> None:
         message = raw_message.strip()
-        parts = message.split(maxsplit=3)
+        parts = message.split()
 
         if len(parts) < 2:
             await websocket.send("error invalid-audio-command")
@@ -28,7 +28,7 @@ class AudioController:
 
         subcommand = parts[1].lower()
         if subcommand == "t":
-            text = parts[2].strip() if len(parts) >= 3 else ""
+            text = self._extract_tts_text(message)
             await self.tts_handler.handle_command(websocket, text)
             return
         if subcommand == "v":
@@ -39,3 +39,10 @@ class AudioController:
             return
 
         await websocket.send("error invalid-audio-command")
+
+    @staticmethod
+    def _extract_tts_text(message: str) -> str:
+        parts = message.split(maxsplit=2)
+        if len(parts) < 3:
+            return ""
+        return parts[2].strip()
