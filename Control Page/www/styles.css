@@ -528,6 +528,10 @@ iframe {
   gap: 12px;
 }
 
+.audio-details[hidden] {
+  display: none;
+}
+
 .audio-section {
   display: grid;
   gap: 8px;
