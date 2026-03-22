@@ -8,6 +8,7 @@ This server accepts the text protocol used by the control page:
 - battery: ``b query``
 - audio tts: ``a t hello from petcar``
 - audio volume: ``a v query``, ``a v 60``
+- audio soundboard: ``a s query``, ``a s play bark``
 
 Queries return websocket responses. Motor and battery commands are forwarded
 to the Arduino over serial.
