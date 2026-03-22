@@ -72,15 +72,52 @@
         </div>
       </div>
 
-      <div class="panel-body stage-body">
-        <div class="video-shell">
-          <iframe id="cameraFrame" title="Robot camera"></iframe>
+        <div class="panel-body stage-body">
+          <div class="video-shell">
+            <iframe id="cameraFrame" title="Robot camera"></iframe>
 
-          <div class="camera-overlay top-right">
-            <div class="hud-card battery-card">
-              <div class="battery-topline">
-                <span>Battery</span>
-                <span id="batteryText">--%</span>
+            <div class="camera-overlay top-left">
+              <section id="audioCard" class="overlay-card audio-card is-collapsed" aria-label="Audio controls">
+                <div class="audio-topbar">
+                  <button id="audioToggle" class="audio-toggle" type="button" aria-expanded="false" aria-controls="audioDetails">
+                    <span class="audio-toggle-icon" aria-hidden="true">&#9835;</span>
+                    <span>Audio</span>
+                  </button>
+
+                  <div class="audio-volume-group">
+                    <label class="audio-volume-label" for="audioVolume">Vol</label>
+                    <input id="audioVolume" class="audio-volume-slider" type="range" min="0" max="100" step="1" value="50" />
+                    <span id="audioVolumeValue" class="audio-volume-value">50%</span>
+                  </div>
+                </div>
+
+                <div id="audioDetails" class="audio-details" hidden>
+                  <div class="audio-section">
+                    <label class="audio-field-label" for="ttsInput">TTS</label>
+                    <div class="audio-action-row">
+                      <input id="ttsInput" class="audio-text-input" type="text" placeholder="Type a message to speak" autocomplete="off" spellcheck="false" />
+                      <button id="ttsSendBtn" class="audio-action-btn" type="button">Speak</button>
+                    </div>
+                  </div>
+
+                  <div class="audio-section">
+                    <label class="audio-field-label" for="soundSelect">Soundboard</label>
+                    <div class="audio-action-row">
+                      <select id="soundSelect" class="audio-select" disabled>
+                        <option value="">No sounds loaded</option>
+                      </select>
+                      <button id="soundPlayBtn" class="audio-action-btn" type="button" disabled>Play</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div class="camera-overlay top-right">
+              <div class="hud-card battery-card">
+                <div class="battery-topline">
+                  <span>Battery</span>
+                  <span id="batteryText">--%</span>
               </div>
               <div class="battery-track">
                 <div id="batteryBar" class="battery-bar"></div>

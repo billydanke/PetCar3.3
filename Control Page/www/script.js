@@ -21,6 +21,15 @@ const signalState = document.getElementById("signalState");
 const batteryBar = document.getElementById("batteryBar");
 const batteryText = document.getElementById("batteryText");
 const battPacket = document.getElementById("battPacket");
+const audioCard = document.getElementById("audioCard");
+const audioToggle = document.getElementById("audioToggle");
+const audioDetails = document.getElementById("audioDetails");
+const audioVolume = document.getElementById("audioVolume");
+const audioVolumeValue = document.getElementById("audioVolumeValue");
+const ttsInput = document.getElementById("ttsInput");
+const ttsSendBtn = document.getElementById("ttsSendBtn");
+const soundSelect = document.getElementById("soundSelect");
+const soundPlayBtn = document.getElementById("soundPlayBtn");
 const driveOut = document.getElementById("driveOut");
 const servoPacket = document.getElementById("servoPacket");
 const nightvisionState = document.getElementById("nightvisionState");
@@ -47,6 +56,9 @@ let pointerDriveAction = null;
 let activeDriveAction = "stop";
 let crawlEnabled = false;
 let nightvisionEnabled = false;
+let audioExpanded = false;
+let audioVolumePercent = 50;
+let soundboardItems = [];
 let current = { x: 0, y: 0, r: 0 };
 let servoState = { x: 0, y: 0 };
 let driveKeys = new Set();
@@ -133,6 +145,7 @@ function setConnected(connected) {
   setText(wsState, connected ? "Connected" : "Disconnected");
   setText(connectBtn, connected ? "Disconnect" : "Connect");
   setText(signalState, connected ? "Pending" : "Unavailable");
+  setAudioControlsEnabled(connected);
 
   if (!connected) {
     stopBatteryPolling();
@@ -183,6 +196,8 @@ function handleOpen() {
   send("s query");
   send("n query");
   send("b query");
+  send("a v query");
+  send("a s query");
   startBatteryPolling();
 }
 
@@ -216,6 +231,75 @@ function handleBattery(percent) {
   }
 }
 
+function setAudioPanelExpanded(expanded) {
+  audioExpanded = expanded;
+  audioCard.classList.toggle("is-collapsed", !expanded);
+  audioToggle.setAttribute("aria-expanded", String(expanded));
+  audioDetails.hidden = !expanded;
+}
+
+function setAudioControlsEnabled(enabled) {
+  audioToggle.disabled = !enabled;
+  audioVolume.disabled = !enabled;
+  ttsInput.disabled = !enabled;
+  ttsSendBtn.disabled = !enabled;
+  soundSelect.disabled = !enabled || soundboardItems.length === 0;
+  soundPlayBtn.disabled = !enabled || !soundSelect.value;
+}
+
+function setAudioVolume(percent) {
+  audioVolumePercent = clamp(Number(percent) || 0, 0, 100);
+  audioVolume.value = String(audioVolumePercent);
+  setText(audioVolumeValue, `${audioVolumePercent}%`);
+}
+
+function setSoundboardItems(items) {
+  soundboardItems = items;
+  soundSelect.innerHTML = "";
+
+  if (soundboardItems.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No sounds loaded";
+    soundSelect.append(option);
+    soundSelect.value = "";
+    setAudioControlsEnabled(Boolean(ws && ws.readyState === WebSocket.OPEN));
+    return;
+  }
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a sound";
+  soundSelect.append(placeholder);
+
+  soundboardItems.forEach((soundId) => {
+    const option = document.createElement("option");
+    option.value = soundId;
+    option.textContent = soundId;
+    soundSelect.append(option);
+  });
+
+  soundSelect.value = "";
+  setAudioControlsEnabled(Boolean(ws && ws.readyState === WebSocket.OPEN));
+}
+
+function sendAudioVolume() {
+  send(`a v ${audioVolume.value}`);
+}
+
+function sendTtsMessage() {
+  const text = ttsInput.value.trim();
+  if (!text) return;
+  if (!send(`a t ${text}`)) return;
+  ttsInput.value = "";
+}
+
+function playSelectedSound() {
+  const soundId = soundSelect.value;
+  if (!soundId) return;
+  send(`a s play ${soundId}`);
+}
+
 function handleMessage(event) {
   const message = event.data.trim();
   setText(lastRecvPacket, message);
@@ -230,6 +314,18 @@ function handleMessage(event) {
 
   if (message.startsWith("s ")) {
     updateServoStateFromMessage(message);
+    return;
+  }
+
+  if (message.startsWith("a v ")) {
+    const parts = message.split(/\s+/);
+    if (parts.length >= 3) setAudioVolume(parts[2]);
+    return;
+  }
+
+  if (message.startsWith("a s items")) {
+    const parts = message.split(/\s+/).slice(3);
+    setSoundboardItems(parts);
     return;
   }
 
@@ -482,6 +578,9 @@ refreshConnectionPreview(true);
 applyDriveAction("stop");
 updateServoUi();
 setNightvisionEnabled(false);
+setAudioPanelExpanded(false);
+setAudioVolume(50);
+setSoundboardItems([]);
 setConnected(false);
 
 [baseIpInput, cameraPortInput, cameraPathInput, wsPortInput].forEach((input) => {
@@ -493,6 +592,17 @@ setConnected(false);
 });
 
 connectBtn.addEventListener("click", connectWebSocket);
+audioToggle.addEventListener("click", () => setAudioPanelExpanded(!audioExpanded));
+audioVolume.addEventListener("input", () => setAudioVolume(audioVolume.value));
+audioVolume.addEventListener("change", sendAudioVolume);
+ttsSendBtn.addEventListener("click", sendTtsMessage);
+ttsInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  sendTtsMessage();
+});
+soundSelect.addEventListener("change", () => setAudioControlsEnabled(Boolean(ws && ws.readyState === WebSocket.OPEN)));
+soundPlayBtn.addEventListener("click", playSelectedSound);
 crawlToggle.addEventListener("click", () => toggleCrawl());
 driveStop.addEventListener("click", () => clearDriveInputsAndStop());
 homeBtn.addEventListener("click", homeServos);

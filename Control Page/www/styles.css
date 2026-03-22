@@ -269,6 +269,11 @@ iframe {
   align-items: flex-start;
 }
 
+.camera-overlay.top-left {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
 .camera-overlay.bottom-left {
   justify-content: flex-start;
   align-items: flex-end;
@@ -420,6 +425,159 @@ iframe {
 
 .servo-card {
   width: min(280px, calc(100vw - 48px));
+}
+
+.audio-card {
+  width: min(420px, calc(100vw - 48px));
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.audio-card.is-collapsed {
+  width: min(360px, calc(100vw - 48px));
+}
+
+.audio-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.audio-toggle,
+.audio-action-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.42);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.audio-toggle {
+  flex: 0 0 auto;
+  min-height: 50px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.audio-toggle:hover,
+.audio-action-btn:hover {
+  filter: brightness(1.08);
+}
+
+.audio-toggle:active,
+.audio-action-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.audio-toggle-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1rem;
+}
+
+.audio-volume-group {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.audio-volume-label,
+.audio-volume-value,
+.audio-field-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.audio-volume-value {
+  color: var(--text);
+  min-width: 42px;
+  text-align: right;
+}
+
+.audio-volume-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: #60a5fa;
+  cursor: pointer;
+}
+
+.audio-details {
+  display: grid;
+  gap: 12px;
+}
+
+.audio-section {
+  display: grid;
+  gap: 8px;
+}
+
+.audio-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.audio-text-input,
+.audio-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: rgba(3, 10, 18, 0.72);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.audio-text-input:focus,
+.audio-select:focus {
+  border-color: rgba(96, 165, 250, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.audio-select {
+  appearance: none;
+}
+
+.audio-action-btn {
+  min-width: 78px;
+  min-height: 46px;
+  padding: 0 16px;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.audio-action-btn:disabled,
+.audio-toggle:disabled,
+.audio-volume-slider:disabled,
+.audio-text-input:disabled,
+.audio-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .servo-pad {
@@ -628,7 +786,9 @@ code {
   }
 
   .drive-card,
-  .servo-card {
+  .servo-card,
+  .audio-card,
+  .audio-card.is-collapsed {
     width: min(100%, 290px);
   }
 
@@ -640,6 +800,16 @@ code {
   .drive-btn {
     min-height: 64px;
     gap: 6px;
+  }
+
+  .audio-topbar,
+  .audio-action-row {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .audio-volume-group {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .servo-pad {
