@@ -113,7 +113,7 @@ function sanitizeBaseIp(value) {
 
 function normalizeCameraPath(value) {
   const trimmed = value.trim();
-  if (!trimmed) return "/cam";
+  if (!trimmed) return "/cam_audio";
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
