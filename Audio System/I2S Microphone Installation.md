@@ -45,7 +45,7 @@ First, ensure that you have powered down the Raspberry Pi and/or disconnected po
 ```
 WS          <-->    GPIO19 (pin 35, also labelled PCM_FS)
 SCK         <-->    GPIO18 (pin 12, also labelled PCM_CLK)
-SD (data)   <-->    GPIO21 (pin 40, also labelled PCM_DOUT)
+SD (data)   <-->    GPIO20 (pin 38, also labelled PCM_DIN)
 GND         <-->    GND (ideally use the mainboard's GND rail)
 VDD         <-->    3.3V (ideally use the mainboard's 3.3V rail)
 ```
