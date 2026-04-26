@@ -148,6 +148,11 @@ journalctl -u mediamtx -f
 ```
 which will give you realtime logs for the service.
 
+## 6. For IR-Cut Night Vision Cameras
+If you have an IR-Cut Night vision camera, a few things to note.
+
+You'll probably want to remove the photoresistors and take over manual control over the camera mode switch and IR lamp(s). To do that, de-solder the photoresistors and take over the switching using a GPIO pin and a mosfet.
+
 ## 6. Final Notes
 That is all you need for the WebRTC camera streaming setup. After the Raspberry Pi has completed booting and connecting to the network, you should always be able to access the camera stream in your browser. If you'd like to implement your own control page, you can easily embed the camera stream into your page using an iframe element.
 
