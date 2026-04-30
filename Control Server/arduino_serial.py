@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 
 try:
@@ -17,6 +18,7 @@ class ArduinoSerialConfig:
     port: str = "/dev/serial0"
     baud_rate: int = 19200
     timeout_s: float = 0.5
+    battery_timeout_s: float = 0.12
 
 
 class ArduinoSerialTransport:
@@ -45,12 +47,8 @@ class ArduinoSerialTransport:
         return await self.send_line("h")
 
     async def query_battery_percent(self) -> int | None:
-        response = await self.request_line("b query")
+        response = await self.request_line("b query", expected_prefix="b", timeout_s=self.config.battery_timeout_s)
         if response is None:
-            return None
-
-        if response.lower().startswith("dbg "):
-            self.logger.warning("Arduino debug response to battery query: %r", response)
             return None
 
         parts = response.split()
@@ -70,9 +68,15 @@ class ArduinoSerialTransport:
         async with self._lock:
             return await asyncio.to_thread(self._send_line_blocking, command)
 
-    async def request_line(self, command: str) -> str | None:
+    async def request_line(
+        self,
+        command: str,
+        *,
+        expected_prefix: str | None = None,
+        timeout_s: float | None = None,
+    ) -> str | None:
         async with self._lock:
-            return await asyncio.to_thread(self._request_line_blocking, command)
+            return await asyncio.to_thread(self._request_line_blocking, command, expected_prefix, timeout_s)
 
     def _send_line_blocking(self, command: str) -> bool:
         if not self._ensure_serial():
@@ -88,37 +92,58 @@ class ArduinoSerialTransport:
             self._handle_serial_failure()
             return False
 
-    def _request_line_blocking(self, command: str) -> str | None:
+    def _request_line_blocking(
+        self,
+        command: str,
+        expected_prefix: str | None = None,
+        timeout_s: float | None = None,
+    ) -> str | None:
         if not self._ensure_serial():
             self._warn_unavailable(command)
             return None
+
+        request_timeout_s = max(0.01, timeout_s if timeout_s is not None else self.config.timeout_s)
+        deadline = time.monotonic() + request_timeout_s
+        original_timeout = self._serial.timeout
 
         try:
             # Drop any stale unread bytes before issuing a request/response command.
             self._serial.reset_input_buffer()
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
-            response_bytes = self._serial.readline()
+
+            while True:
+                remaining_s = deadline - time.monotonic()
+                if remaining_s <= 0:
+                    self.logger.warning("Timed out waiting for Arduino response to '%s'", command)
+                    return None
+
+                self._serial.timeout = min(0.05, remaining_s)
+                response_bytes = self._serial.readline()
+                if not response_bytes:
+                    continue
+
+                response = response_bytes.decode("ascii", errors="ignore").strip()
+                if not response:
+                    self.logger.debug(
+                        "Ignoring blank Arduino response to '%s': %s",
+                        command,
+                        response_bytes.hex(" "),
+                    )
+                    continue
+
+                self.logger.debug("Arduino raw response to '%s': %r [%s]", command, response, response_bytes.hex(" "))
+                if expected_prefix is None or response.split(maxsplit=1)[0].lower() == expected_prefix.lower():
+                    return response
+
+                self.logger.debug("Ignoring non-matching Arduino response to '%s': %r", command, response)
         except Exception:
             self.logger.warning("Failed to query Arduino over serial: %s", command, exc_info=True)
             self._handle_serial_failure()
             return None
-
-        if not response_bytes:
-            self.logger.warning("Timed out waiting for Arduino response to '%s'", command)
-            return None
-
-        response = response_bytes.decode("ascii", errors="ignore").strip()
-        if not response:
-            self.logger.warning(
-                "Arduino returned non-text or whitespace-only response to '%s': %s",
-                command,
-                response_bytes.hex(" "),
-            )
-            return None
-
-        self.logger.debug("Arduino raw response to '%s': %r [%s]", command, response, response_bytes.hex(" "))
-        return response
+        finally:
+            if self._serial is not None:
+                self._serial.timeout = original_timeout
 
     def _warn_unavailable(self, command: str) -> None:
         if self._warned_unavailable:

@@ -40,6 +40,7 @@ class ServerConfig:
     arduino_port: str = "/dev/serial0"
     arduino_baud_rate: int = 19200
     arduino_timeout_s: float = 0.5
+    battery_timeout_s: float = 0.12
     heartbeat_interval_s: float = 1.0
 
 
@@ -53,6 +54,7 @@ class ControlServer:
                 port=self.config.arduino_port,
                 baud_rate=self.config.arduino_baud_rate,
                 timeout_s=self.config.arduino_timeout_s,
+                battery_timeout_s=self.config.battery_timeout_s,
             ),
         )
 
@@ -137,6 +139,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--arduino-port", default="/dev/serial0", help="Arduino serial port")
     parser.add_argument("--arduino-baud", type=int, default=19200, help="Arduino serial baud rate")
     parser.add_argument("--arduino-timeout", type=float, default=0.5, help="Arduino serial read/write timeout in seconds")
+    parser.add_argument("--battery-timeout", type=float, default=0.12, help="Seconds to wait for an Arduino battery response")
     parser.add_argument("--heartbeat-interval", type=float, default=1.0, help="Seconds between Arduino heartbeat messages")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging verbosity")
     return parser
@@ -175,6 +178,7 @@ def main() -> None:
         arduino_port=args.arduino_port,
         arduino_baud_rate=args.arduino_baud,
         arduino_timeout_s=args.arduino_timeout,
+        battery_timeout_s=args.battery_timeout,
         heartbeat_interval_s=args.heartbeat_interval,
     )
     asyncio.run(run_server(config))
