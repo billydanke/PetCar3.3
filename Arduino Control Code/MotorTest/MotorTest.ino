@@ -20,8 +20,8 @@ namespace Config {
   constexpr int8_t RR_SIGN = +1;
 
   constexpr int TEST_POWER = 45;
-  constexpr unsigned long TEST_TIME_MS = 1000;
-  constexpr unsigned long STOP_TIME_MS = 250;
+  constexpr unsigned long TEST_TIME_MS = 2000;
+  constexpr unsigned long STOP_TIME_MS = 1000;
 }
 
 struct DriveVector {
