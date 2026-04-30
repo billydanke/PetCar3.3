@@ -9,6 +9,7 @@
   PetCar3.3 mecanum drive controller
 
   Serial commands (newline terminated):
+    h
     m x <int> y <int> r <int>
     b query
 
@@ -397,13 +398,9 @@ static void processCommand(char *commandLine) {
       break;
 
     case 'm': {
-      if (!isHeartbeatHealthy()) {
-        stopAllMotors();
-        break;
-      }
-
       DriveVector drive;
       if (parseDriveVector(commandLine, drive)) {
+        recordHeartbeat();
         driveMecanum(drive);
       } else {
         respondDebugEcho("bad-m", commandLine);
@@ -414,6 +411,7 @@ static void processCommand(char *commandLine) {
     case 'b': {
       char *argument = strtok(nullptr, " ");
       if (isBatteryQuery(argument)) {
+        recordHeartbeat();
         respondBatteryQuery();
       } else {
         respondDebugEcho("bad-b", commandLine);
