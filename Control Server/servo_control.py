@@ -122,13 +122,14 @@ class ServoController:
         return max(self.servo_min_deg, min(self.servo_max_deg, angle))
 
     def _write_axis(self, axis: str, logical_angle: float) -> None:
-        duty_cycle = self._logical_to_duty_cycle(logical_angle)
         if axis == "x":
+            duty_cycle = self._logical_to_duty_cycle(-logical_angle)
             if self.servo_x_pwm is None:
                 return
             self.servo_x_pwm.change_duty_cycle(duty_cycle)
             return
 
+        duty_cycle = self._logical_to_duty_cycle(logical_angle)
         if self.servo_y_pwm is None:
             return
         self.servo_y_pwm.change_duty_cycle(duty_cycle)
