@@ -39,8 +39,8 @@ where you will want to confirm that Serial is <b>enabled</b>, and that the Seria
 
 Once that is done, you can exit the config.
 
-## 2. Create the App Directory
-Many of the PetCar3.3 sofrware components, such as the control server and the git repo itself, will exist within an application directory. To make that directory (and set folder ownership to user), run the following commands:
+## 3. Create the App Directory
+Many of the PetCar3.3 software components, such as the control server and the git repo itself, will exist within an application directory. To make that directory (and set folder ownership to user), run the following commands:
 ```sh
 sudo mkdir -p /opt/petcar33/{app,venv}
 sudo chown -R $USER:$USER /opt/petcar33
@@ -53,7 +53,7 @@ ls /opt/petcar33
 ```
 where you should see ``app/`` and ``venv/`` listed
 
-## 3. Clone the Repository into the App Directory
+## 4. Clone the Repository into the App Directory
 Once the application folder is made, clone the repo into it:
 ```sh
 git clone https://github.com/billydanke/PetCar3.3.git /opt/petcar33/app
@@ -65,7 +65,7 @@ git status
 ls -la
 ```
 
-## 4. Create the Python Virtual Environment
+## 5. Create the Python Virtual Environment
 As of writing, Debian now requires python packages installed via pip to be done so inside of a virtual environment. To create the environment, run the following:
 ```sh
 python -m venv --system-site-packages /opt/petcar33/venv
@@ -80,7 +80,7 @@ Inside the virtual environment, upgrade pip and its setup tools:
 pip install --upgrade pip setuptools wheel
 ```
 
-## 5. Install the Necessary Python Packages
+## 6. Install the Necessary Python Packages
 While still inside the virtual environment, run the following to install the necessary python packages for the control server:
 ```sh
 pip install "websockets>=16" rpi-hardware-pwm
@@ -95,8 +95,8 @@ For TTS support, the control server uses the system-installed `espeak-ng` binary
 espeak-ng --version
 ```
 
-## 6. Enable 2-Channel PWM
-Before servo PWM control will work correctly, the proper configuration needs to be updated in ``/boot/config.txt``. To do so, open the file:
+## 7. Enable 2-Channel PWM
+Before servo PWM control will work correctly, the proper configuration needs to be updated in ``/boot/firmware/config.txt``. To do so, open the file:
 ```sh
 sudo nano /boot/firmware/config.txt
 ```
@@ -106,14 +106,34 @@ and add the following lines near the end of the file:
 dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
 ```
 
-## 7. Test the Control Server Manually
+## 8. Disable Bluetooth for Arduino Serial
+By default, Bluetooth may use the Raspberry Pi's stable PL011 UART and leave `/dev/serial0` mapped to the less reliable mini UART (`ttyS0`). For clean Arduino communication, disable Bluetooth so `/dev/serial0` maps to `ttyAMA0`.
+
+While inside the `/boot/firmware/config.txt` file, add the following line:
+```sh
+dtoverlay=disable-bt
+```
+
+Then reboot:
+```sh
+sudo reboot
+```
+
+After the reboot, verify that `/dev/serial0` points to `ttyAMA0` and that Bluetooth is inactive:
+```sh
+readlink -f /dev/serial0
+systemctl status bluetooth --no-pager
+```
+The serial link should report `/dev/ttyAMA0`. If it still reports `/dev/ttyS0`, revisit `/boot/firmware/config.txt` before testing Arduino control.
+
+## 9. Test the Control Server Manually
 While still inside the virtual environment, you can test run the control server:
 ```sh
 python "/opt/petcar33/app/Control Server/control_server.py"
 ```
 If everything works, use ``Ctrl+C`` to exit the server and type ``deactivate`` to exit the virtual environment shell.
 
-## 8. Start Control Server at Boot
+## 10. Start Control Server at Boot
 To start the control server at system boot, we'll be using a systemd service. To do so, run the following to create the service:
 ```sh
 sudo nano /etc/systemd/system/petcar33-control.service
