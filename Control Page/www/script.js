@@ -657,6 +657,7 @@ window.addEventListener("keydown", (event) => {
   }
 
   if (isDriveKey) {
+    if (driveKeys.has(key)) return;
     registerDriveKey(key);
     refreshDriveFromInputs();
     return;
