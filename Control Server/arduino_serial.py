@@ -86,6 +86,7 @@ class ArduinoSerialTransport:
         try:
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
+            self._drain_available_lines(context=f"after write '{command}'")
             return True
         except Exception:
             self.logger.warning("Failed to write Arduino serial command: %s", command, exc_info=True)
@@ -107,8 +108,6 @@ class ArduinoSerialTransport:
         original_timeout = self._serial.timeout
 
         try:
-            # Drop any stale unread bytes before issuing a request/response command.
-            self._serial.reset_input_buffer()
             self._serial.write(f"{command}\n".encode("ascii"))
             self._serial.flush()
 
@@ -136,7 +135,7 @@ class ArduinoSerialTransport:
                 if expected_prefix is None or response.split(maxsplit=1)[0].lower() == expected_prefix.lower():
                     return response
 
-                self.logger.debug("Ignoring non-matching Arduino response to '%s': %r", command, response)
+                self._log_unexpected_line(response_bytes, response, context=f"while waiting for '{command}'")
         except Exception:
             self.logger.warning("Failed to query Arduino over serial: %s", command, exc_info=True)
             self._handle_serial_failure()
@@ -144,6 +143,55 @@ class ArduinoSerialTransport:
         finally:
             if self._serial is not None:
                 self._serial.timeout = original_timeout
+
+    def _drain_available_lines(self, *, context: str) -> None:
+        if self._serial is None:
+            return
+
+        try:
+            available = getattr(self._serial, "in_waiting", 0)
+        except Exception:
+            self.logger.debug("Could not inspect Arduino serial input buffer", exc_info=True)
+            return
+
+        if available <= 0:
+            return
+
+        original_timeout = self._serial.timeout
+        try:
+            self._serial.timeout = 0
+            for _ in range(8):
+                try:
+                    if getattr(self._serial, "in_waiting", 0) <= 0:
+                        break
+                except Exception:
+                    break
+
+                line_bytes = self._serial.readline()
+                if not line_bytes:
+                    break
+
+                if not line_bytes.endswith(b"\n"):
+                    self.logger.warning(
+                        "Arduino partial line %s: %r [%s]",
+                        context,
+                        line_bytes.decode("ascii", errors="ignore").strip(),
+                        line_bytes.hex(" "),
+                    )
+                    break
+
+                line = line_bytes.decode("ascii", errors="ignore").strip()
+                self._log_unexpected_line(line_bytes, line, context=context)
+        finally:
+            if self._serial is not None:
+                self._serial.timeout = original_timeout
+
+    def _log_unexpected_line(self, line_bytes: bytes, line: str, *, context: str) -> None:
+        if line.startswith("dbg "):
+            self.logger.warning("Arduino debug %s: %r [%s]", context, line, line_bytes.hex(" "))
+            return
+
+        self.logger.warning("Arduino unexpected line %s: %r [%s]", context, line, line_bytes.hex(" "))
 
     def _warn_unavailable(self, command: str) -> None:
         if self._warned_unavailable:

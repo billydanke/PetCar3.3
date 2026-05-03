@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <ctype.h>
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -305,11 +306,50 @@ static bool readSerialLine(char *outLine, size_t outSize) {
   return false;
 }
 
-static bool parseDriveVector(char *command, DriveVector &drive) {
-  char *token = strtok(command, " ");
-  if (token == nullptr || (token[0] != 'm' && token[0] != 'M')) {
+static bool tokenEqualsIgnoreCase(const char *left, const char *right) {
+  if (left == nullptr || right == nullptr) {
     return false;
   }
+
+  while (*left != '\0' && *right != '\0') {
+    if (tolower(*left) != tolower(*right)) {
+      return false;
+    }
+    ++left;
+    ++right;
+  }
+
+  return *left == '\0' && *right == '\0';
+}
+
+static bool parseStrictPercent(const char *token, int &value) {
+  if (token == nullptr || token[0] == '\0') {
+    return false;
+  }
+
+  char *end = nullptr;
+  const long parsed = strtol(token, &end, 10);
+  if (end == token || *end != '\0') {
+    return false;
+  }
+
+  if (parsed > INT_MAX || parsed < INT_MIN) {
+    return false;
+  }
+
+  value = clampPercent((int)parsed);
+  return true;
+}
+
+static bool parseDriveVector(char *command, DriveVector &drive) {
+  char *token = strtok(command, " ");
+  if (!tokenEqualsIgnoreCase(token, "m")) {
+    return false;
+  }
+
+  bool sawX = false;
+  bool sawY = false;
+  bool sawR = false;
 
   while (true) {
     char *key = strtok(nullptr, " ");
@@ -322,21 +362,36 @@ static bool parseDriveVector(char *command, DriveVector &drive) {
       return false;
     }
 
-    const int value = clampPercent(atoi(valueToken));
-
-    switch (tolower(key[0])) {
-      case 'x':
-        drive.x = value;
-        break;
-      case 'y':
-        drive.y = value;
-        break;
-      case 'r':
-        drive.r = value;
-        break;
-      default:
-        break;
+    int value = 0;
+    if (!parseStrictPercent(valueToken, value)) {
+      return false;
     }
+
+    if (tokenEqualsIgnoreCase(key, "x")) {
+      if (sawX) {
+        return false;
+      }
+      drive.x = value;
+      sawX = true;
+    } else if (tokenEqualsIgnoreCase(key, "y")) {
+      if (sawY) {
+        return false;
+      }
+      drive.y = value;
+      sawY = true;
+    } else if (tokenEqualsIgnoreCase(key, "r")) {
+      if (sawR) {
+        return false;
+      }
+      drive.r = value;
+      sawR = true;
+    } else {
+      return false;
+    }
+  }
+
+  if (!sawX || !sawY || !sawR) {
+    return false;
   }
 
   drive.x = applyDeadzone(drive.x);
@@ -358,23 +413,16 @@ static void respondDebugEcho(const char *reason, const char *commandLine) {
   Serial.println(commandLine);
 }
 
-static bool isBatteryQuery(const char *argument) {
+static bool isBatteryQuery(const char *argument, const char *extra) {
+  if (extra != nullptr) {
+    return false;
+  }
+
   if (argument == nullptr) {
     return true;
   }
 
-  return
-    tolower(argument[0]) == 'q' &&
-    (
-      argument[1] == '\0' ||
-      (
-        tolower(argument[1]) == 'u' &&
-        tolower(argument[2]) == 'e' &&
-        tolower(argument[3]) == 'r' &&
-        tolower(argument[4]) == 'y' &&
-        argument[5] == '\0'
-      )
-    );
+  return tokenEqualsIgnoreCase(argument, "q") || tokenEqualsIgnoreCase(argument, "query");
 }
 
 static void processCommand(char *commandLine) {
@@ -382,47 +430,53 @@ static void processCommand(char *commandLine) {
     return;
   }
 
+  char rawCommand[Config::LINE_BUFFER_SIZE];
+  strncpy(rawCommand, commandLine, sizeof(rawCommand));
+  rawCommand[sizeof(rawCommand) - 1] = '\0';
+
   char commandCopy[Config::LINE_BUFFER_SIZE];
   strncpy(commandCopy, commandLine, sizeof(commandCopy));
   commandCopy[sizeof(commandCopy) - 1] = '\0';
 
   char *command = strtok(commandCopy, " ");
   if (command == nullptr) {
-    respondDebugEcho("null", commandLine);
+    respondDebugEcho("null", rawCommand);
     return;
   }
 
-  switch (tolower(command[0])) {
-    case 'h':
+  if (tokenEqualsIgnoreCase(command, "h")) {
+    if (strtok(nullptr, " ") == nullptr) {
       recordHeartbeat();
-      break;
-
-    case 'm': {
-      DriveVector drive;
-      if (parseDriveVector(commandLine, drive)) {
-        recordHeartbeat();
-        driveMecanum(drive);
-      } else {
-        respondDebugEcho("bad-m", commandLine);
-      }
-      break;
+    } else {
+      respondDebugEcho("bad-h", rawCommand);
     }
-
-    case 'b': {
-      char *argument = strtok(nullptr, " ");
-      if (isBatteryQuery(argument)) {
-        recordHeartbeat();
-        respondBatteryQuery();
-      } else {
-        respondDebugEcho("bad-b", commandLine);
-      }
-      break;
-    }
-
-    default:
-      respondDebugEcho("unknown", commandLine);
-      break;
+    return;
   }
+
+  if (tokenEqualsIgnoreCase(command, "m")) {
+    DriveVector drive;
+    if (parseDriveVector(commandLine, drive)) {
+      recordHeartbeat();
+      driveMecanum(drive);
+    } else {
+      respondDebugEcho("bad-m", rawCommand);
+    }
+    return;
+  }
+
+  if (tokenEqualsIgnoreCase(command, "b")) {
+    char *argument = strtok(nullptr, " ");
+    char *extra = strtok(nullptr, " ");
+    if (isBatteryQuery(argument, extra)) {
+      recordHeartbeat();
+      respondBatteryQuery();
+    } else {
+      respondDebugEcho("bad-b", rawCommand);
+    }
+    return;
+  }
+
+  respondDebugEcho("unknown", rawCommand);
 }
 
 void setup() {
