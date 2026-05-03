@@ -208,7 +208,7 @@ function handleClose() {
 
 function startBatteryPolling() {
   if (batteryTimer) return;
-  batteryTimer = setInterval(() => send("b query"), 3000);
+  batteryTimer = setInterval(() => send("b query"), 30000);
 }
 
 function stopBatteryPolling() {
